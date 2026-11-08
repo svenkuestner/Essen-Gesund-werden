@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ee">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Essen &amp; Gesund">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Essen &amp; Gesund werden</title>
+<style>
+  :root{
+    --bg:#f6f3ee; --card:#fff; --ink:#26231f; --muted:#7a736a; --line:#e7e1d8;
+    --accent:#3f6b4f; --accent-soft:#e3ede5;
+    --hi:#2f7a46; --hi-bg:#e2f1e6; --mid:#a86b12; --mid-bg:#fbefd9; --lo:#b2432f; --lo-bg:#f8e3de;
+  }
+  *{box-sizing:border-box}
+  html,body{overflow-x:hidden;max-width:100%;margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+  main{max-width:560px;width:100%;margin:0 auto;padding:calc(16px + env(safe-area-inset-top)) 16px calc(160px + env(safe-area-inset-bottom));overflow-x:hidden}
+  .card,.item,.day,.chip,.tip,.meals{overflow-wrap:anywhere}
+  h1{font-size:15px;font-weight:600;color:var(--muted);margin:4px 0 12px;letter-spacing:.02em;text-transform:uppercase}
+  h2{font-size:17px;margin:24px 0 10px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+  .today .label{font-size:13px;color:var(--muted);margin-bottom:4px}
+  .today .dish{font-size:24px;font-weight:700;line-height:1.2;margin:0 0 10px}
+  .badges{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .badge{font-size:12.5px;font-weight:600;padding:3px 9px;border-radius:999px;background:#f0ebe3;color:#5d564d}
+  .badge.edit{background:#e8e4f6;color:#5a4a9c}
+  .recipe{display:inline-block;margin:0 0 12px;color:var(--accent);font-weight:600;text-decoration:none;font-size:15px}
+  #toast{position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:#26231f;color:#fff;padding:10px 16px;border-radius:12px;font-size:14.5px;opacity:0;pointer-events:none;transition:.25s;max-width:90vw;text-align:center;z-index:20}
+  #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+  .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+  .tip{background:var(--accent-soft);border-radius:10px;padding:9px 11px;font-size:14.5px;margin-bottom:12px}
+  .meals{border-top:1px solid var(--line);margin-top:12px;padding-top:10px;display:grid;gap:6px;font-size:14.5px}
+  .meals b{display:inline-block;width:78px;color:var(--muted);font-weight:600}
+  .phase{font-size:13.5px;background:var(--mid-bg);color:#7a4f0e;border-radius:10px;padding:8px 11px;margin-bottom:12px}
+  button{font:inherit;cursor:pointer;border:0}
+  .btn{background:var(--accent);color:#fff;border-radius:12px;padding:11px 16px;font-weight:600}
+  .btn.ghost{background:#efeae2;color:var(--ink)}
+  .btn.small{padding:7px 12px;font-size:14px;border-radius:10px}
+  .days{display:grid;gap:8px}
+  .day{display:flex;align-items:center;gap:10px;min-width:0;overflow:hidden;cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 13px;text-align:left;width:100%;color:var(--ink)}
+  .day .d{width:46px;flex:none;text-align:center;line-height:1.1}
+  .day .d .wd{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase}
+  .day .d .dn{font-size:20px;font-weight:700}
+  .day .t{flex:1;min-width:0;overflow:hidden}
+  .day .t .n{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .day .t .s{font-size:13px;color:var(--muted)}
+  .day.empty .n{color:var(--muted);font-weight:500}
+  .plabel{flex:none;font-size:11.5px;font-weight:600;color:#5d564d;background:#f0ebe3;border-radius:999px;padding:3px 8px;white-space:nowrap}
+  nav{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom)}
+  nav .wrap{display:flex;max-width:560px;width:100%}
+  nav button{flex:1;background:none;padding:12px 0 14px;font-size:13px;color:var(--muted);font-weight:600}
+  nav button .i{display:block;font-size:20px;margin-bottom:2px}
+  nav button.on{color:var(--accent)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:9px 13px;font-size:14.5px;color:var(--ink)}
+  .chip:active{background:var(--accent-soft)}
+  .row{display:flex;gap:8px}
+  input[type=text]{flex:1;min-width:0;font:inherit;font-size:16px;padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
+  .list{display:grid;gap:6px;margin-top:12px}
+  .item{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 13px}
+  .item .box{width:24px;height:24px;border-radius:7px;border:2px solid #c9c1b5;flex:none;display:flex;align-items:center;justify-content:center;background:#fff;color:#fff;font-size:15px}
+  .item.done .box{background:var(--accent);border-color:var(--accent)}
+  .item.done .txt{text-decoration:line-through;color:var(--muted)}
+  .item .txt{flex:1}
+  .stock .nm{flex:1;min-width:0}
+  .stock .nm .s{font-size:12.5px;color:var(--muted)}
+  .stock .nm .s.exp{color:var(--lo);font-weight:600} .stock .nm .s.soon{color:var(--mid);font-weight:600}
+  .stock.zero{opacity:.5}
+  .ctr{display:flex;align-items:center;gap:6px}
+  .ctr button{width:34px;height:34px;border-radius:10px;background:#efeae2;font-size:18px;font-weight:700;color:var(--ink)}
+  .ctr span{min-width:26px;text-align:center;font-weight:700}
+  .notice{background:#fff;border:1px dashed #cbbfae;border-radius:12px;padding:12px;font-size:14px;color:#5d564d;margin-bottom:12px}
+  .muted{color:var(--muted);font-size:14px}
+  .sheet-bg{position:fixed;inset:0;background:rgba(30,25,20,.35);display:none;align-items:flex-end;justify-content:center;z-index:10}
+  .sheet-bg.open{display:flex}
+  .sheet{background:var(--bg);width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(24px + env(safe-area-inset-bottom))}
+  .sheet h3{margin:0 0 4px;font-size:19px}
+  .sheet .sec{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:18px 0 8px}
+  .toggle{display:flex;align-items:center;gap:10px;font-size:15px;margin-top:14px}
+  .toggle input{width:22px;height:22px;accent-color:var(--accent)}
+  .hidden{display:none!important}
+  #login{position:fixed;inset:0;background:var(--bg);z-index:30;display:flex;align-items:center;justify-content:center;padding:24px}
+  #login form{width:100%;max-width:360px;display:grid;gap:10px}
+  #login img{width:84px;height:84px;border-radius:20px;margin:0 auto 6px}
+  #login h2{text-align:center;margin:0 0 8px}
+  #login input{width:100%;font:inherit;font-size:16px;padding:12px 13px;border:1px solid var(--line);border-radius:12px;background:#fff}
+  .cchip{display:inline-flex;align-items:center;background:#fff;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+  .cchip button{background:none;color:var(--ink);font-size:14.5px;padding:9px 6px 9px 13px}
+  .cchip button.x{color:var(--muted);padding:9px 12px 9px 6px;font-size:16px}
+  .dayhead{display:flex;align-items:center;gap:8px;margin:2px 0 12px}
+  .dayhead .ttl{flex:1;text-align:center;font-weight:700;font-size:17px;line-height:1.2}
+  .dayhead .ttl small{display:block;font-size:12.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+  .arrow{width:42px;height:42px;border-radius:12px;background:#efeae2;font-size:20px;font-weight:700;color:var(--ink)}
+  .meal{margin-bottom:10px}
+  .meal .label{font-size:12.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px;display:flex;justify-content:space-between;align-items:center}
+  .meal .name{font-size:17px;font-weight:600;line-height:1.25}
+  .meal.dinner .name{font-size:22px;font-weight:700;margin-bottom:8px}
+  .meal .need{font-size:13px;color:var(--muted);margin-top:4px}
+  .link{background:none;color:var(--accent);font-weight:600;font-size:14px;padding:0}
+  .ov .s2{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</head>
+<body>
+<main>
+  <div id="status"></div>
+
+  <section id="tab-day">
+    <div class="dayhead">
+      <button class="arrow" id="prevDay" aria-label="Vortag">‹</button>
+      <div class="ttl" id="dayTitle"></div>
+      <button class="arrow" id="nextDay" aria-label="Nächster Tag">›</button>
+    </div>
+    <div id="phase"></div>
+    <div id="dayView"></div>
+  </section>
+
+  <section id="tab-week" class="hidden">
+    <h1>Übersicht</h1>
+    <div class="days" id="days"></div>
+  </section>
+
+  <section id="tab-shop" class="hidden">
+    <h1>Einkaufsliste</h1>
+    <button class="btn" id="planShop" style="width:100%">🛒 Alles für die nächsten 7 Tage</button>
+    <div class="muted" style="margin-top:6px;font-size:13px">Frühstück, Mittag, Abendessen und Snacks für 2 Personen, abgeglichen mit dem Vorrat. Gewürze, Knoblauch, Brühe, Öl und Sojasauce setze ich als vorhanden voraus. HelloFresh-Zutaten kommen mit der Box.</div>
+    <form class="row" id="shopForm" style="margin-top:14px">
+      <input type="text" id="shopInput" placeholder="Was wird noch gebraucht?" autocomplete="off">
+      <button class="btn" type="submit">+</button>
+    </form>
+    <div class="muted" style="margin:14px 0 8px">Schnell hinzufügen</div>
+    <div class="chips" id="shopChips"></div>
+    <div class="list" id="shopList"></div>
+    <div style="margin-top:14px" id="shopClearWrap"></div>
+  </section>
+
+  <section id="tab-stock" class="hidden">
+    <h1>Vorrat im Keller</h1>
+    <div class="list" id="stockList"></div>
+    <form class="row" id="stockForm" style="margin-top:14px">
+      <input type="text" id="stockInput" placeholder="Neuer Artikel" autocomplete="off">
+      <button class="btn" type="submit">+</button>
+    </form>
+    <div style="margin-top:28px;text-align:center"><button class="link" id="logout">Abmelden</button></div>
+  </section>
+</main>
+
+<nav><div class="wrap">
+  <button data-tab="day" class="on"><span class="i">🍽</span>Tag</button>
+  <button data-tab="week"><span class="i">📅</span>Übersicht</button>
+  <button data-tab="shop"><span class="i">🛒</span>Einkauf</button>
+  <button data-tab="stock"><span class="i">📦</span>Vorrat</button>
+</div></nav>
+
+<div id="login" class="hidden">
+  <form id="loginForm">
+    <img src="icon-192.png" alt="">
+    <h2>Essen &amp; Gesund werden</h2>
+    <input type="email" id="loginEmail" placeholder="E-Mail" autocomplete="username" required>
+    <input type="password" id="loginPw" placeholder="Passwort" autocomplete="current-password" required>
+    <button class="btn" type="submit">Anmelden</button>
+    <div class="muted" id="loginMsg" style="text-align:center"></div>
+  </form>
+</div>
+<div id="toast"></div>
+<div class="sheet-bg" id="sheetBg">
+  <div class="sheet" id="sheet">
+    <h3 id="sheetTitle">Ändern</h3>
+    <div class="muted" id="sheetCurrent"></div>
+    <div id="sheetDinner">
+      <label class="toggle"><input type="checkbox" id="twoDays"> Für 2 Tage (gleich auch für den Tag danach)</label>
+      <div class="sec">Schnell &amp; einfach</div>
+      <div class="chips" id="quickChips"></div>
+      <div class="sec">HelloFresh</div>
+      <div class="chips" id="hfChips"></div>
+    </div>
+    <div id="sheetOther">
+      <div class="sec">Auswahl</div>
+      <div class="chips" id="otherChips"></div>
+    </div>
+    <div id="customSec"><div class="sec">Eigene</div><div class="chips" id="customChips"></div></div>
+    <div class="sec">Eigener Wunsch</div>
+    <form class="row" id="freeForm">
+      <input type="text" id="freeInput" placeholder="z. B. Nudeln mit Tomatensoße" autocomplete="off">
+      <button class="btn" type="submit">OK</button>
+    </form>
+    <label class="toggle"><input type="checkbox" id="saveCustom" checked> Zur Auswahl hinzufügen</label>
+    <div class="row" style="margin-top:18px">
+      <button class="btn ghost" id="resetMeal" style="flex:1">Zurücksetzen</button>
+      <button class="btn ghost" id="closeSheet" style="flex:1">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+// ---------- Fester Katalog (aus dem Essensplan) ----------
+const QUICK = [
+  {dish:"Chili sin Carne", url:"https://www.zuckerjagdwurst.com/en/recipes/vegan-chili-sin-carne", kind:"topf", protein:"hi", tip:"Sojagranulat mitbraten für extra Eiweiß."},
+  {dish:"Linseneintopf", url:"https://www.zuckerjagdwurst.com/en/recipes/vegan-lentil-stew", kind:"topf", protein:"hi", tip:"Angebratene Räuchertofu-Würfel dazu."},
+  {dish:"Rote-Linsen-Dal", url:"https://www.zuckerjagdwurst.com/en/recipes/vegan-red-lentil-soup", kind:"topf", protein:"hi", tip:"Mit Reis und Spinat – mild und gut verträglich."},
+  {dish:"Riesenbohnen-Eintopf", kind:"topf", protein:"hi", tip:"Vollkornbrot dazu."},
+  {dish:"Kichererbsen-Kokos-Curry", url:"https://www.zuckerjagdwurst.com/en/recipes/vegan-chickpea-curry-chana-masala", kind:"topf", protein:"hi", tip:"Eine Extra-Dose Kichererbsen rein."},
+  {dish:"Tofu-Gemüse-Pfanne mit Reis", url:"https://www.zuckerjagdwurst.com/en/recipes/vegan-stir-fry-rice-with-tofu", kind:"schnell", protein:"hi", tip:"Tofu gut anbraten, Edamame dazu."},
+  {dish:"Vollkornnudeln mit Linsen-Bolognese", url:"https://www.zuckerjagdwurst.com/en/recipes/vegan-lentil-bolognese", kind:"schnell", protein:"hi", tip:"Rote Linsen direkt in der Tomatensoße garen."},
+  {dish:"Ofengemüse mit Kichererbsen & Hummus", url:"https://www.zuckerjagdwurst.com/en/recipes/basic-hummus", kind:"schnell", protein:"hi", tip:"Kichererbsen mit aufs Blech."},
+  {dish:"Burritos mit Tempeh & Bohnen", url:"https://www.zuckerjagdwurst.com/en/recipes/vegan-burrito-party", kind:"schnell", protein:"hi", tip:"Tempeh und Bohnen liefern viel Eiweiß."},
+  {dish:"Linsensuppe aus dem Vorrat + Brot", kind:"schnell", protein:"mid", tip:"Notfall-Essen: Dose aufwärmen, fertig."}
+];
+const HF = [
+  {dish:"Porree-Schupfnudel-Pfanne", protein:"lo", tip:"Ein Glas Riesenbohnen oder Räuchertofu mitbraten."},
+  {dish:"Tikka Masala mit Kräuterseitlingen", protein:"lo", tip:"1–2 Dosen Kichererbsen aus dem Vorrat dazu."},
+  {dish:"Spaghetti Avocado-Basilikum-Pesto", protein:"lo", tip:"Riesenbohnen oder Räuchertofu untermischen."},
+  {dish:"Brokkoli-Bohnen-Suppe mit Filetstücken", protein:"hi", tip:""},
+  {dish:"Schawarma-Teller mit Tahini", protein:"hi", tip:"Hummus dazu."},
+  {dish:"Bibimbap mit Gochujang-Tofu", protein:"hi", tip:"Gochujang getrennt servieren (Schärfe)."},
+  {dish:"Filetstücke in Orange-Sauce", protein:"hi", tip:""},
+  {dish:"Döner-Teller mit Schawarma", protein:"hi", tip:""},
+  {dish:"Kürbis-Kichererbsen-Curry", protein:"hi", tip:"Noch eine Dose Kichererbsen für Reste."},
+  {dish:"Schawarma auf buntem Salat", protein:"mid", tip:"Hummus und Vollkornbrot dazu."},
+  {dish:"Austernpilze in Sesam-Marinade", protein:"lo", tip:"Tofu oder Edamame dazu."}
+].map(h => ({...h, kind:"hf"}));
+
+// Frühstück & Mittag – Mengen für 2 Personen
+const BREAKFAST = [
+  {name:"Overnight Oats mit Sojajoghurt, Leinsamen & Erdnussmus", v:[], f:[["Haferflocken",100,"g"],["Sojamilch",200,"ml"],["Sojajoghurt",200,"g"],["Leinsamen (geschrotet)",20,"g"],["Erdnussmus",30,"g"],["Bananen",2,"Stk."]]},
+  {name:"Sojajoghurt mit Haferflocken und Kiwi", v:[], f:[["Sojajoghurt",400,"g"],["Haferflocken",60,"g"],["Kiwis",2,"Stk."]]},
+  {name:"Vollkornbrot mit Hummus oder Erdnussmus", v:[], f:[["Vollkornbrot",4,"Scheiben"],["Hummus",100,"g"],["Erdnussmus",30,"g"],["Gurke",0.5,"Stk."]]},
+  {name:"Overnight Oats mit Apfelmus & Nüssen", v:[["apfelmus",0]], f:[["Haferflocken",100,"g"],["Sojamilch",300,"ml"],["Nüsse",30,"g"]]},
+  {name:"Warmer Haferbrei mit Sojamilch und Apfelmus", v:[["apfelmus",0]], f:[["Haferflocken",100,"g"],["Sojamilch",400,"ml"]]}
+];
+const ROTATION = [0,1,2,3];
+const PORRIDGE = 4;
+const LUNCH = [
+  {name:"Vollkornbrot mit Hummus und Rohkost", v:[], f:[["Vollkornbrot",4,"Scheiben"],["Hummus",100,"g"],["Möhren",1,"Stk."],["Gurke",0.5,"Stk."],["Paprika (frisch)",0.5,"Stk."]]},
+  {name:"Linsensuppe aus dem Vorrat + Brot", v:[["linsen",1]], f:[["Vollkornbrot",2,"Scheiben"]]},
+  {name:"Hummus-Wrap mit Rohkost", v:[], f:[["Wraps",2,"Stk."],["Hummus",100,"g"],["Möhren",1,"Stk."],["Gurke",0.5,"Stk."]]}
+];
+// Snacks für sie – Wochenbedarf
+const SNACKS_TEXT = "Kiwi, Trockenpflaumen, Nüsse, Sojapudding, Hummus mit Gemüsesticks";
+const SNACKS_WEEK = [["Kiwis",7,"Stk."],["Trockenpflaumen",200,"g"],["Nüsse",150,"g"],["Sojapudding",4,"Becher"],["Hummus",200,"g"],["Möhren",3,"Stk."]];
+// Packungsgrößen, damit die Liste in Kaufmengen rechnet
+const PACK = {
+  "Haferflocken":[500,"g","Pck. à 500 g"], "Sojamilch":[1000,"ml","l"], "Sojajoghurt":[500,"g","Becher à 500 g"],
+  "Leinsamen (geschrotet)":[250,"g","Pck. à 250 g"], "Erdnussmus":[350,"g","Glas"], "Hummus":[200,"g","Becher à 200 g"],
+  "Nüsse":[200,"g","Pck. à 200 g"], "Vollkornbrot":[16,"Scheiben","Brot"], "Wraps":[6,"Stk.","Pck."], "Gurke":[1,"Stk.","Stk."],
+  "Pflanzenjoghurt natur":[500,"g","Becher à 500 g"]
+};
+const SHOP_CHIPS = ["Sojajoghurt","Sojamilch","Haferflocken","Brot","Hummus","Tofu","Räuchertofu","Kiwis","Obst","Gemüse","Erdnussmus","Tee"];
+const PHASE1 = ["2026-11-20","2026-11-29"];
+const START = new Date("2026-11-16T00:00:00");
+
+// ---------- Zutaten je Gericht ----------
+// Blog-Rezepte von zuckerjagdwurst.com (Zutaten übernommen, ggf. hochgerechnet),
+// mit Tausch gegen Gleichwertiges aus dem Vorrat. v: Vorrat-ID + Anzahl (0 = muss nur da sein), f: kaufen.
+// Gewürze, Knoblauch, Brühe, Sojasauce, Öl, vegane Butter, Essig, Speisestärke gelten als vorhanden.
+const ING = {
+  "Chili sin Carne": {note:"Blog-Menge (4–6 Portionen). Tausch: Pinto-Bohnen statt schwarzer, Riesenbohnen statt weißer Bohnen.",
+    v:[["pinto",1],["riesenbohnen",1],["tomatenmark-tube",1]],
+    f:[["Sojagranulat",125,"g"],["getrocknete Pilze",15,"g"],["Süßkartoffel",400,"g"],["Zwiebeln",2,"Stk."],["rote Zwiebel",1,"Stk."],["Knollensellerie",50,"g"],["Möhren",2,"Stk."],["Chili (frisch)",1,"Stk."],["Walnüsse",50,"g"],["Ahornsirup",1,"Fl."],["veganer Rotwein",100,"ml"],["gehackte Tomaten",2,"Dose"],["Frühlingszwiebeln",1,"Bund"],["Koriander",1,"Bund"],["Pflanzenjoghurt natur",1,"Becher"]]},
+  "Linseneintopf": {note:"Blog-Menge ×1,5 (ca. 6 Portionen). Tausch: Dosen-Linsen mit Suppengrün statt trockener Tellerlinsen.",
+    v:[["linsen",3]],
+    f:[["Zwiebeln",2,"Stk."],["Möhren",3,"Stk."],["Pastinaken",2,"Stk."],["Süßkartoffel",600,"g"],["Lauch",2,"Stk."],["vegane Würstchen",300,"g"],["Petersilie",1,"Bund"]]},
+  "Rote-Linsen-Dal": {note:"Blog: Rote Linsensuppe, Menge ×1,5 (ca. 6 Portionen).",
+    v:[["tomatenmark-tube",0]],
+    f:[["Zwiebeln",3,"Stk."],["Ingwer",1,"Stück"],["Möhren",3,"Stk."],["rote Linsen",450,"g"],["Pflanzenjoghurt natur",750,"g"],["Harissa",1,"Tube"],["Zitronen",1,"Stk."],["frische Kräuter",1,"Bund"]]},
+  "Riesenbohnen-Eintopf": {note:"Eigenes Rezept (kein passendes Blog-Rezept).",
+    v:[["riesenbohnen",3],["letscho",1],["tomatenmark-tube",0],["olivenoel",0]],
+    f:[["gehackte Tomaten",1,"Dose"],["Möhren",2,"Stk."],["Zwiebeln",1,"Stk."],["Vollkornbrot",1,"Stk."]]},
+  "Kichererbsen-Kokos-Curry": {note:"Blog: Chana Masala, Menge ×3 (ca. 6 Portionen). Tausch: Naturreis aus dem Vorrat.",
+    v:[["kichererbsen",3],["naturreis",0]],
+    f:[["Zwiebeln",6,"Stk."],["Ingwer",2,"Stück"],["grüne Chili (optional)",1,"Stk."],["ganze Tomaten",6,"Dose"],["Koriander",1,"Bund"],["Limetten",2,"Stk."]]},
+  "Tofu-Gemüse-Pfanne mit Reis": {note:"Blog: Stir Fry Reis mit Tofu (4 Portionen). Tausch: Erbsen mit Möhren aus dem Glas statt TK-Erbsen, Naturreis.",
+    v:[["naturreis",0],["erbsen-moehren",1]],
+    f:[["Tofu natur",400,"g"],["Frühlingszwiebeln",1,"Bund"],["Ingwer",1,"Stück"],["Blumenkohl",300,"g"],["Aubergine",1,"Stk."],["Paprika (frisch)",1,"Stk."],["Champignons",100,"g"],["dunkle Sojasauce",1,"Fl."],["Reisessig",1,"Fl."],["Agavendicksaft",1,"Fl."],["Sojasprossen",1,"Pck."],["Erdnüsse",1,"Pck."],["Sesam",1,"Pck."]]},
+  "Vollkornnudeln mit Linsen-Bolognese": {note:"Blog-Menge (4 Portionen).",
+    v:[["tomatenmark-tube",0],["olivenoel",0]],
+    f:[["Zwiebeln",2,"Stk."],["Möhren",2,"Stk."],["Staudensellerie",1,"Stk."],["Champignons",250,"g"],["passierte Tomaten",500,"g"],["gehackte Tomaten",500,"g"],["rote Linsen",250,"g"],["Zartbitterschokolade (100 %)",20,"g"],["Ahornsirup",1,"Fl."],["Vollkornspaghetti",500,"g"],["Hefeflocken",100,"g"],["frische Kräuter",1,"Bund"]]},
+  "Ofengemüse mit Kichererbsen & Hummus": {note:"Hummus nach Blog-Grundrezept (Dosen-Kichererbsen), Gemüse nach Wahl.",
+    v:[["kichererbsen",4],["olivenoel",0]],
+    f:[["Tahin",1,"Glas"],["Zitronen",1,"Stk."],["Gemüse fürs Blech",1,"kg"],["Fladenbrot",1,"Stk."]]},
+  "Burritos mit Tempeh & Bohnen": {note:"Blog: Burrito Party (6 Burritos). Tausch: Pinto-Bohnen statt schwarzer Bohnen, Naturreis statt Basmati.",
+    v:[["pinto",1],["tomatenmark-tube",0],["naturreis",0]],
+    f:[["Wraps",1,"Pck."],["Eisbergsalat",1,"Stk."],["Avocados",2,"Stk."],["Limetten",3,"Stk."],["Koriander",1,"Bund"],["Sojajoghurt",1,"Becher"],["Tempeh",200,"g"],["Tomaten",2,"Stk."],["Schalotte",1,"Stk."],["Jalapeño (optional)",1,"Stk."]]},
+  "Linsensuppe aus dem Vorrat + Brot": {note:"Notfall-Essen.", v:[["linsen",1]], f:[["Vollkornbrot",1,"Stk."]]}
+};
+
+
+// ---------- Hilfen ----------
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const WD = ["So","Mo","Di","Mi","Do","Fr","Sa"];
+const WDL = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
+const MON = ["Jan","Feb","März","Apr","Mai","Juni","Juli","Aug","Sept","Okt","Nov","Dez"];
+const key = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const fromKey = k => new Date(k+"T00:00:00");
+const addDays = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+const today0 = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+const startDay = () => today0() < START ? new Date(START) : today0();
+const PROT = {hi:"proteinreich", mid:"mittel Eiweiß", lo:"wenig Eiweiß"};
+const KIND = {hf:"HelloFresh", topf:"Topf", schnell:"schnell gemacht", frei:"eigener Wunsch"};
+const recipeFor = dish => (QUICK.find(q=>q.dish===dish)||{}).url || "";
+const isPhase1 = k => k >= PHASE1[0] && k <= PHASE1[1];
+const fmtDate = d => `${WDL[d.getDay()]}, ${d.getDate()}. ${MON[d.getMonth()]}`;
+
+// ---------- Zustand ----------
+const state = { days:{}, shop:[], stock:[], custom:[], canWrite:true };
+let clearArmed = false, clearTimer = null;
+let db = null, viewKey = key(startDay()), sheet = null;
+
+function setStatus(html){ $("#status").innerHTML = html ? `<div class="notice">${html}</div>` : ""; }
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("on"),3500); }
+
+// ---------- Mahlzeiten je Tag ----------
+function breakfastFor(k){
+  const e = state.days[k];
+  if(e && e.breakfast) return BREAKFAST.find(b=>b.name===e.breakfast) || {name:e.breakfast, v:[], f:[], free:true};
+  if(isPhase1(k)) return BREAKFAST[PORRIDGE];
+  const n = Math.round(fromKey(k).getTime()/86400000);
+  return BREAKFAST[ROTATION[((n % ROTATION.length)+ROTATION.length) % ROTATION.length]];
+}
+function lunchFor(k){
+  const e = state.days[k];
+  if(e && e.lunch) return LUNCH.find(l=>l.name===e.lunch) || {name:e.lunch, v:[], f:[], free:true};
+  const y = state.days[key(addDays(fromKey(k),-1))];
+  if(y && y.kind === "topf") return {name:`Reste: ${y.dish}`, v:[], f:[], leftover:true};
+  const n = Math.round(fromKey(k).getTime()/86400000);
+  return LUNCH[[0,2,0,1][((n%4)+4)%4]];
+}
+function needText(m){
+  const parts = [];
+  (m.v||[]).forEach(([id])=>{ const s = state.stock.find(x=>x.id===id); if(s) parts.push(s.name+" (Vorrat)"); });
+  (m.f||[]).forEach(([n])=>parts.push(n));
+  return parts.length ? "Du brauchst: " + parts.join(", ") : "";
+}
+
+// ---------- Tagesansicht ----------
+function renderDay(){
+  const d = fromKey(viewKey), k = viewKey, isToday = k === key(today0());
+  $("#dayTitle").innerHTML = `<small>${isToday ? "Heute" : (k===key(addDays(today0(),1)) ? "Morgen" : "&nbsp;")}</small>${fmtDate(d)}`;
+  $("#prevDay").style.visibility = k <= key(START) && today0() <= START ? "hidden" : "visible";
+  $("#phase").innerHTML = isPhase1(k) ? `<div class="phase">Phase 1: schonend essen – Linsen, Suppen, Haferbrei. Bohnen und Kohl erst wenig.</div>` : "";
+  const e = state.days[k], b = breakfastFor(k), l = lunchFor(k), w = state.canWrite;
+  const editBtn = (meal) => w ? `<button class="link" data-meal="${meal}">Ändern</button>` : "";
+  let dinner = `<div class="card meal dinner">
+    <div class="label">Abendessen ${editBtn("dinner")}</div>
+    <div class="name">${e && e.dish ? esc(e.dish) : "Noch nichts geplant"}</div>`;
+  if(e && e.dish){
+    dinner += `<div class="badges"><span class="badge">${esc(KIND[e.kind]||"")}</span>${e.protein&&PROT[e.protein]?`<span class="badge">${PROT[e.protein]}</span>`:""}${e.edited?`<span class="badge edit">geändert</span>`:""}</div>`;
+    if(e.tip) dinner += `<div class="tip">💡 ${esc(e.tip)}</div>`;
+    if(ING[e.dish] && ING[e.dish].note) dinner += `<div class="muted" style="font-size:13px;margin:-4px 0 10px">${esc(ING[e.dish].note)}</div>`;
+    if(recipeFor(e.dish)) dinner += `<a class="recipe" href="${esc(recipeFor(e.dish))}" target="_blank" rel="noopener">📖 Rezept ansehen ↗</a>`;
+    if(ING[e.dish]) dinner += `<div class="need" style="margin-bottom:10px">${esc(needText(ING[e.dish]))}</div>`;
+    if(w && ING[e.dish]) dinner += `<div class="actions">
+        <button class="btn small ghost" data-shopdish="${esc(e.dish)}">🛒 Zutaten auf die Liste</button>
+        <button class="btn small ghost" data-deduct="${k}">${e.stockDeducted?"✓ Vorrat abgezogen":"Gekocht – Vorrat abziehen"}</button></div>`;
+  } else if(w){ dinner += `<button class="btn small" data-meal="dinner">Auswählen</button>`; }
+  dinner += `</div>`;
+  const mealCard = (label, m, meal) => `<div class="card meal">
+    <div class="label">${label} ${editBtn(meal)}</div>
+    <div class="name">${esc(m.name)}</div>
+    ${m.leftover ? `<div class="need">Nichts zu kaufen – vom Vorabend.</div>` : (needText(m)?`<div class="need">${esc(needText(m))}</div>`:"")}
+  </div>`;
+  $("#dayView").innerHTML =
+    mealCard("Frühstück", b, "breakfast") +
+    mealCard("Mittag", l, "lunch") +
+    dinner +
+    `<div class="card meal"><div class="label">Snacks</div><div class="name" style="font-size:15px;font-weight:500">${SNACKS_TEXT}</div></div>`;
+}
+
+// ---------- Übersicht ----------
+function renderWeek(){
+  const t = startDay(); let html = "";
+  for(let i=0;i<21;i++){
+    const d = addDays(t,i), dk = key(d), x = state.days[dk];
+    const sub = `F: ${breakfastFor(dk).name.split(" mit ")[0]} · M: ${lunchFor(dk).name}`;
+    html += `<div role="button" class="day ov ${x&&x.dish?"":"empty"}" data-goto="${dk}">
+      <div class="d"><div class="wd">${WD[d.getDay()]}</div><div class="dn">${d.getDate()}.</div></div>
+      <div class="t"><div class="n">${x&&x.dish?esc(x.dish):"Abendessen noch offen"}</div><div class="s2">${esc(sub)}</div></div>
+      ${x&&x.protein&&PROT[x.protein]?`<span class="plabel">${PROT[x.protein]}</span>`:""}
+    </div>`;
+  }
+  $("#days").innerHTML = html;
+}
+
+// ---------- Ändern ----------
+function chipHtml(list, group, field){ return list.map((q,i)=>`<button class="chip" data-pick="${group}:${i}">${esc(q[field])}</button>`).join(""); }
+function openSheet(meal){
+  sheet = {meal, k:viewKey};
+  const d = fromKey(viewKey), e = state.days[viewKey];
+  const label = {dinner:"Abendessen", breakfast:"Frühstück", lunch:"Mittag"}[meal];
+  $("#sheetTitle").textContent = `${label} · ${fmtDate(d)}`;
+  const cur = meal==="dinner" ? (e&&e.dish) : meal==="breakfast" ? breakfastFor(viewKey).name : lunchFor(viewKey).name;
+  $("#sheetCurrent").textContent = cur ? `Aktuell: ${cur}` : "Noch nichts geplant";
+  $("#sheetDinner").classList.toggle("hidden", meal!=="dinner");
+  $("#sheetOther").classList.toggle("hidden", meal==="dinner");
+  if(meal==="breakfast") $("#otherChips").innerHTML = chipHtml(BREAKFAST,"b","name");
+  if(meal==="lunch") $("#otherChips").innerHTML = chipHtml(LUNCH,"l","name");
+  renderCustom();
+  $("#twoDays").checked = false; $("#freeInput").value = ""; $("#saveCustom").checked = true;
+  $("#sheetBg").classList.add("open");
+}
+function renderCustom(){
+  if(!sheet) return;
+  const list = state.custom.filter(c=>c.meal===sheet.meal);
+  $("#customSec").classList.toggle("hidden", !list.length);
+  $("#customChips").innerHTML = list.map(c=>`<span class="cchip"><button data-pick="c:${esc(c.id)}">${esc(c.name)}</button>${state.canWrite?`<button class="x" data-delcustom="${esc(c.id)}" aria-label="Entfernen">×</button>`:""}</span>`).join("");
+}
+function closeSheet(){ $("#sheetBg").classList.remove("open"); sheet = null; }
+
+async function writeDayFields(dk, fields){
+  if(!db) return;
+  const cur = state.days[dk] ? {...state.days[dk]} : {};
+  Object.entries(fields).forEach(([f,v])=>{ if(v===null) delete cur[f]; else cur[f]=v; });
+  try{
+    if(Object.keys(cur).length === 0) await db.doc("days/"+dk).delete();
+    else await db.doc("days/"+dk).set(cur);
+  }catch(err){ handleWriteError(err); }
+}
+const DINNER_FIELDS = ["dish","kind","protein","tip","stockDeducted","edited","editedAt"];
+function dinnerFields(entry){
+  const f = {}; DINNER_FIELDS.forEach(x=>f[x]=null);
+  if(entry){ Object.assign(f, entry, {stockDeducted:null, edited:true, editedAt:new Date().toISOString()}); }
+  return f;
+}
+async function applyPick(value){
+  const {meal, k} = sheet, two = $("#twoDays").checked;
+  closeSheet();
+  if(meal==="dinner"){
+    await writeDayFields(k, dinnerFields(value));
+    if(two && value) await writeDayFields(key(addDays(fromKey(k),1)), dinnerFields(value));
+  } else {
+    await writeDayFields(k, {[meal]: value});
+  }
+}
+function handleWriteError(err){
+  if(err && err.code === "invalid_argument"){ state.canWrite = false; setStatus("Speichern nicht erlaubt – bitte ab- und wieder anmelden."); renderAll(); }
+  else if(err && err.code === "quota_exceeded"){ setStatus("Speicher voll – bitte erledigte Einträge löschen."); }
+  else setStatus("Speichern hat nicht geklappt. Bitte gleich nochmal versuchen.");
+}
+
+// ---------- Einkaufsliste aus dem Plan ----------
+function collect(meals){
+  // meals: Liste von {v:[[id,n]], f:[[name,n,unit]]}
+  const avail = {}; state.stock.forEach(x=>avail[x.id]=Number(x.count)||0);
+  const fresh = {}, missing = {};
+  meals.forEach(r=>{
+    (r.v||[]).forEach(([id,n])=>{
+      const have = avail[id] ?? 0, it = state.stock.find(x=>x.id===id), name = it ? it.name : id;
+      if(n===0){ if(have<=0) missing[name] = Math.max(missing[name]||0,1); return; }
+      const lack = Math.max(0, n-have); avail[id] = Math.max(0, have-n);
+      if(lack>0) missing[name] = (missing[name]||0) + lack;
+    });
+    (r.f||[]).forEach(([name,n,unit])=>{ fresh[name] = fresh[name] || {}; fresh[name][unit] = (fresh[name][unit]||0) + n; });
+  });
+  const pl = (n,u)=> n>1 && u==="Dose" ? "Dosen" : n>1 && u==="Glas" ? "Gläser" : u;
+  const round = n => Math.round(n*10)/10;
+  const items = [];
+  Object.entries(fresh).forEach(([k,o])=>{
+    const p = PACK[k];
+    if(p && Object.keys(o).length===1 && o[p[1]] !== undefined){
+      const packs = Math.max(1, Math.ceil(o[p[1]]/p[0] - 0.05));
+      items.push({key:k, text:`${k} (${packs} ${p[2]})`});
+    } else {
+      items.push({key:k, text:`${k} (${Object.entries(o).map(([u,n])=>{ const v = u==="Stk."||u==="Bund"||u==="Becher"||u==="Dose" ? Math.ceil(n) : round(n); return `${v} ${pl(v,u)}`; }).join(" + ")})`});
+    }
+  });
+  Object.entries(missing).forEach(([k,n])=>items.push({key:k, text:`${k} (${n}× – fehlt im Vorrat)`}));
+  return items;
+}
+async function addItems(items){
+  if(!db || !state.canWrite) return;
+  const openKeys = new Set(state.shop.filter(s=>!s.done).map(s=>(s.key||s.text).toLowerCase()));
+  let added = 0;
+  for(const it of items){
+    if(openKeys.has(it.key.toLowerCase())) continue;
+    try{ await db.collection("shopping").add({text:it.text, key:it.key, done:false, at:new Date().toISOString()}); added++; openKeys.add(it.key.toLowerCase()); }
+    catch(err){ handleWriteError(err); return; }
+  }
+  toast(added ? `${added} Sachen auf die Einkaufsliste gesetzt.` : "Alles schon da oder schon auf der Liste.");
+}
+function weekMeals(n){
+  const t = startDay(), meals = [];
+  let prev = state.days[key(addDays(t,-1))]?.dish;
+  for(let i=0;i<n;i++){
+    const k = key(addDays(t,i)), e = state.days[k];
+    meals.push(breakfastFor(k));
+    const l = lunchFor(k); if(!l.leftover) meals.push(l);
+    if(e && e.dish && e.dish !== prev && ING[e.dish]) meals.push(ING[e.dish]);
+    prev = e?.dish;
+  }
+  meals.push({v:[], f:SNACKS_WEEK});
+  return meals;
+}
+async function deductStock(dk){
+  const e = state.days[dk]; if(!e || !ING[e.dish] || !db) return;
+  if(e.stockDeducted){ toast("Schon abgezogen."); return; }
+  for(const [id,n] of ING[e.dish].v){
+    if(!n) continue;
+    const s = state.stock.find(x=>x.id===id); if(!s) continue;
+    try{ await db.doc("vorrat/"+id).update({count:Math.max(0,(Number(s.count)||0)-n)}); }catch(err){ handleWriteError(err); return; }
+  }
+  await writeDayFields(dk, {stockDeducted:true});
+  toast("Vorrat aktualisiert.");
+}
+
+// ---------- Einkauf ----------
+function renderShop(){
+  const open = state.shop.filter(s=>!s.done), done = state.shop.filter(s=>s.done);
+  const row = s => `<div class="item ${s.done?"done":""}">
+      <button class="box" data-toggle="${esc(s.id)}" ${state.canWrite?"":"disabled"}>${s.done?"✓":""}</button>
+      <span class="txt">${esc(s.text)}</span></div>`;
+  $("#shopList").innerHTML = open.length||done.length ? open.map(row).join("") + done.map(row).join("") : `<div class="muted">Die Liste ist leer.</div>`;
+  $("#shopClearWrap").innerHTML = state.canWrite && state.shop.length ? `<div class="actions">
+      ${done.length ? `<button class="btn ghost small" id="clearDone">Erledigte entfernen (${done.length})</button>` : ""}
+      <button class="btn ghost small" id="clearAll">${clearArmed ? "Wirklich alles löschen? Nochmal tippen" : "Liste leeren"}</button></div>` : "";
+  $("#shopChips").innerHTML = SHOP_CHIPS.map(c=>`<button class="chip" data-shopchip="${esc(c)}">${esc(c)}</button>`).join("");
+  $("#shopForm").classList.toggle("hidden", !state.canWrite);
+  $("#planShop").classList.toggle("hidden", !state.canWrite);
+}
+async function addShop(text){
+  text = text.trim(); if(!text || !db) return;
+  if(state.shop.some(s=>!s.done && (s.key||s.text).toLowerCase()===text.toLowerCase())) return;
+  try{ await db.collection("shopping").add({text, key:text, done:false, at:new Date().toISOString()}); }catch(err){ handleWriteError(err); }
+}
+
+// ---------- Vorrat ----------
+function mhdInfo(m){
+  if(!m) return ["",""];
+  const d = fromKey(m), t = today0(), txt = `MHD ${d.getDate()}. ${MON[d.getMonth()]} ${d.getFullYear()}`;
+  if(d < t) return [txt+" – abgelaufen","exp"];
+  if(d < addDays(t,90)) return [txt,"soon"];
+  return [txt,""];
+}
+function renderStock(){
+  $("#stockList").innerHTML = !state.stock.length ? `<div class="muted">Noch kein Vorrat eingetragen.</div>` : state.stock.map(s=>{
+    const [m,cls] = mhdInfo(s.mhd), sub = [s.size, m].filter(Boolean).join(" · ");
+    return `<div class="item stock ${s.count>0?"":"zero"}">
+      <div class="nm"><div>${esc(s.name)}</div><div class="s ${cls}">${esc(sub)}</div></div>
+      <div class="ctr">${state.canWrite?`<button data-dec="${esc(s.id)}">−</button>`:""}<span>${Number(s.count)||0}</span>${state.canWrite?`<button data-inc="${esc(s.id)}">+</button>`:""}</div></div>`;
+  }).join("");
+  $("#stockForm").classList.toggle("hidden", !state.canWrite);
+}
+async function changeStock(id, delta){
+  const s = state.stock.find(x=>x.id===id); if(!s||!db) return;
+  const n = Math.max(0,(Number(s.count)||0)+delta); if(n===s.count) return;
+  try{ await db.doc("vorrat/"+id).update({count:n}); }catch(err){ handleWriteError(err); }
+}
+
+function renderAll(){ renderDay(); renderWeek(); renderShop(); renderStock(); }
+function showTab(name){
+  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on", b.dataset.tab===name));
+  ["day","week","shop","stock"].forEach(n=>$("#tab-"+n).classList.toggle("hidden", n!==name));
+  window.scrollTo(0,0);
+}
+
+// ---------- Ereignisse ----------
+document.addEventListener("click", e=>{
+  const t = e.target.closest("button,[role=button]"); if(!t) return;
+  if(t.dataset.tab){ showTab(t.dataset.tab); return; }
+  if(t.id==="prevDay"){ viewKey = key(addDays(fromKey(viewKey),-1)); renderDay(); return; }
+  if(t.id==="nextDay"){ viewKey = key(addDays(fromKey(viewKey),1)); renderDay(); return; }
+  if(t.dataset.goto){ viewKey = t.dataset.goto; renderDay(); showTab("day"); return; }
+  if(t.dataset.meal){ openSheet(t.dataset.meal); return; }
+  if(t.dataset.pick){
+    const p = t.dataset.pick, g = p.slice(0,p.indexOf(":")), i = p.slice(p.indexOf(":")+1);
+    if(g==="q"||g==="h"){ const q = (g==="q"?QUICK:HF)[+i]; applyPick({dish:q.dish, kind:q.kind, protein:q.protein, tip:q.tip||""}); }
+    if(g==="b") applyPick(BREAKFAST[+i].name);
+    if(g==="l") applyPick(LUNCH[+i].name);
+    if(g==="c"){ const c = state.custom.find(x=>x.id===i); if(c) applyPick(sheet.meal==="dinner" ? {dish:c.name, kind:"frei", protein:null, tip:""} : c.name); }
+    return;
+  }
+  if(t.id==="resetMeal"){ if(sheet) applyPick(null); return; }
+  if(t.id==="closeSheet"){ closeSheet(); return; }
+  if(t.dataset.delcustom){ if(db) db.doc("custom/"+t.dataset.delcustom).delete().catch(handleWriteError); return; }
+  if(t.dataset.toggle){ const s = state.shop.find(x=>x.id===t.dataset.toggle); if(s && db) db.doc("shopping/"+s.id).update({done:!s.done}).catch(handleWriteError); return; }
+  if(t.id==="clearDone"){ (async()=>{ for(const s of state.shop.filter(x=>x.done)){ try{ await db.doc("shopping/"+s.id).delete(); }catch(err){ handleWriteError(err); break; } } })(); return; }
+  if(t.id==="clearAll"){
+    if(!clearArmed){ clearArmed = true; renderShop(); clearTimeout(clearTimer); clearTimer = setTimeout(()=>{ clearArmed=false; renderShop(); }, 4000); return; }
+    clearArmed = false; clearTimeout(clearTimer);
+    (async()=>{ for(const s of [...state.shop]){ try{ await db.doc("shopping/"+s.id).delete(); }catch(err){ handleWriteError(err); break; } } toast("Einkaufsliste geleert."); })();
+    return;
+  }
+  if(t.dataset.shopchip){ if(state.canWrite) addShop(t.dataset.shopchip); return; }
+  if(t.dataset.shopdish){ addItems(collect([ING[t.dataset.shopdish]])); return; }
+  if(t.dataset.deduct){ deductStock(t.dataset.deduct); return; }
+  if(t.id==="planShop"){ addItems(collect(weekMeals(7))); return; }
+  if(t.dataset.inc){ changeStock(t.dataset.inc, 1); return; }
+  if(t.dataset.dec){ changeStock(t.dataset.dec, -1); return; }
+});
+$("#sheetBg").addEventListener("click", e=>{ if(e.target.id==="sheetBg") closeSheet(); });
+$("#freeForm").addEventListener("submit", e=>{
+  e.preventDefault(); const v = $("#freeInput").value.trim(); if(!v || !sheet) return;
+  if($("#saveCustom").checked && db && state.canWrite && !state.custom.some(c=>c.meal===sheet.meal && c.name.toLowerCase()===v.toLowerCase())){
+    db.collection("custom").add({meal:sheet.meal, name:v, at:new Date().toISOString()}).catch(handleWriteError);
+  }
+  applyPick(sheet.meal==="dinner" ? {dish:v, kind:"frei", protein:null, tip:""} : v);
+});
+$("#shopForm").addEventListener("submit", e=>{ e.preventDefault(); const v=$("#shopInput").value; $("#shopInput").value=""; addShop(v); });
+$("#stockForm").addEventListener("submit", async e=>{
+  e.preventDefault(); const v=$("#stockInput").value.trim(); if(!v||!db) return; $("#stockInput").value="";
+  try{ await db.collection("vorrat").add({name:v, size:"", count:1, mhd:""}); }catch(err){ handleWriteError(err); }
+});
+$("#quickChips").innerHTML = chipHtml(QUICK,"q","dish");
+$("#hfChips").innerHTML = chipHtml(HF,"h","dish");
+
+// ---------- Datenbank (Supabase) ----------
+function makeDb(sb){
+  const cache = {}, loaders = {};
+  const sorters = {
+    shopping:(a,b)=>String(a.data.at||"").localeCompare(String(b.data.at||"")),
+    custom:(a,b)=>String(a.data.at||"").localeCompare(String(b.data.at||"")),
+    vorrat:(a,b)=>String(a.data.name||"").localeCompare(String(b.data.name||""),"de")
+  };
+  const err = e => ({code:"unavailable", message: e && e.message});
+  const snap = rows => ({docs: rows.map(r=>({id:r.id, exists:true, data:()=>r.data, metadata:{fromCache:false}})), metadata:{fromCache:false}});
+  function docRef(name, id){
+    return {
+      async set(data){ const {error} = await sb.from(name).upsert({id, data, updated_at:new Date().toISOString()}); if(error) throw err(error); loaders[name]?.(); },
+      async update(part){ const cur = (cache[name] && cache[name].get(id)) || {}; return this.set({...cur, ...part}); },
+      async delete(){ const {error} = await sb.from(name).delete().eq("id", id); if(error) throw err(error); loaders[name]?.(); }
+    };
+  }
+  function collection(name){
+    return {
+      orderBy(){ return this; },
+      onSnapshot(next, onErr){
+        let t = null, busy = false, again = false;
+        const load = async()=>{
+          if(busy){ again = true; return; } busy = true;
+          const {data, error} = await sb.from(name).select("id,data");
+          busy = false;
+          if(error){ onErr && onErr(err(error)); return; }
+          if(sorters[name]) data.sort(sorters[name]);
+          cache[name] = new Map(data.map(r=>[r.id, r.data]));
+          next(snap(data));
+          if(again){ again = false; load(); }
+        };
+        loaders[name] = load;
+        load();
+        sb.channel("rt-"+name).on("postgres_changes", {event:"*", schema:"public", table:name}, ()=>{ clearTimeout(t); t = setTimeout(load, 200); }).subscribe();
+        document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) load(); });
+        return ()=>{};
+      },
+      async add(data){ const id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+Math.random().toString(36).slice(2)); await docRef(name, id).set(data); return {id}; },
+      doc(id){ return docRef(name, id); }
+    };
+  }
+  return { collection, doc(path){ const i = path.indexOf("/"); return docRef(path.slice(0,i), path.slice(i+1)); } };
+}
+
+// ---------- Start ----------
+renderAll();
+let sb = null;
+function startApp(){
+  db = makeDb(sb);
+  state.canWrite = true;
+  setStatus("Lade Plan …");
+  const timer = setTimeout(()=>setStatus("Die Daten lassen sich gerade nicht laden. Bitte Internetverbindung prüfen."), 10000);
+  const seen = new Set();
+  const ok = name => { seen.add(name); if(seen.size>=3){ clearTimeout(timer); setStatus(""); } };
+  const fail = () => { clearTimeout(timer); setStatus("Verbindung unterbrochen. App schließen und neu öffnen."); };
+  db.collection("days").onSnapshot(snap=>{ const m = {}; snap.docs.forEach(d=>{ m[d.id]=d.data(); }); state.days = m; renderDay(); renderWeek(); ok("days"); }, fail);
+  db.collection("shopping").onSnapshot(snap=>{ state.shop = snap.docs.map(d=>({id:d.id, ...d.data()})); renderShop(); ok("shop"); }, fail);
+  db.collection("vorrat").onSnapshot(snap=>{ state.stock = snap.docs.map(d=>({id:d.id, ...d.data()})); renderStock(); renderDay(); ok("stock"); }, fail);
+  db.collection("custom").onSnapshot(snap=>{ state.custom = snap.docs.map(d=>({id:d.id, ...d.data()})); renderCustom(); }, ()=>{});
+}
+(async()=>{
+  if(typeof SUPABASE_URL === "undefined" || /DEIN/.test(SUPABASE_URL) || !window.supabase){
+    setStatus("Die Datenbank ist noch nicht eingerichtet: Bitte <b>config.js</b> mit Supabase-URL und Schlüssel füllen."); return;
+  }
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}});
+  const {data:{session}} = await sb.auth.getSession();
+  if(session) startApp(); else $("#login").classList.remove("hidden");
+})();
+$("#loginForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  $("#loginMsg").textContent = "Melde an …";
+  const {error} = await sb.auth.signInWithPassword({email:$("#loginEmail").value.trim(), password:$("#loginPw").value});
+  if(error){ $("#loginMsg").textContent = "Anmeldung fehlgeschlagen. E-Mail und Passwort prüfen."; return; }
+  $("#login").classList.add("hidden"); $("#loginMsg").textContent = ""; startApp();
+});
+$("#logout").addEventListener("click", async()=>{ if(sb) await sb.auth.signOut(); location.reload(); });
+</script>
+</body>
+</html>
