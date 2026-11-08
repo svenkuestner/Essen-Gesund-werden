@@ -190,6 +190,20 @@
       <button class="btn" type="submit">OK</button>
     </form>
     <label class="toggle"><input type="checkbox" id="saveCustom" checked> Zur Auswahl hinzufügen</label>
+    <details id="recipeBox" style="margin-top:14px">
+      <summary style="font-weight:600;color:var(--accent);cursor:pointer">+ Rezept &amp; Zutaten hinzufügen</summary>
+      <div class="sec">Rezept-Link (optional)</div>
+      <input type="text" id="recipeUrl" placeholder="https://… (auch Instagram)" autocomplete="off" inputmode="url" style="width:100%">
+      <div class="sec">Zutaten</div>
+      <div class="row" style="margin-bottom:8px">
+        <button type="button" class="btn small ghost" id="ocrBtn">📷 Bild hochladen</button>
+        <span class="muted" id="ocrStatus" style="align-self:center;font-size:13px"></span>
+      </div>
+      <input type="file" id="ocrFile" accept="image/*" class="hidden">
+      <textarea id="ingText" rows="7" placeholder="Zutaten einfügen – eine pro Zeile, z. B.&#10;400 g Tofu&#10;2 Zwiebeln&#10;1 can chickpeas" style="width:100%;font:inherit;font-size:15px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)"></textarea>
+      <div id="ingPreview" class="muted" style="font-size:13px;margin-top:8px"></div>
+      <div class="muted" style="font-size:12.5px;margin-top:6px">Gewürze, Öl, Knoblauch, Salz &amp; Co. werden weggelassen. Englisch geht auch. Danach oben bei „Eigener Wunsch“ den Namen eintragen und OK tippen.</div>
+    </details>
     <div class="row" style="margin-top:18px">
       <button class="btn ghost" id="resetMeal" style="flex:1">Zurücksetzen</button>
       <button class="btn ghost" id="closeSheet" style="flex:1">Abbrechen</button>
@@ -292,6 +306,158 @@ const ING = {
 };
 
 
+// ---------- Rezept-Import: Zutaten aus Text / Bild ----------
+const EN_DE = {
+  "onion":"Zwiebeln","onions":"Zwiebeln","yellow onion":"Zwiebeln","white onion":"Zwiebeln","red onion":"rote Zwiebel","shallot":"Schalotte","shallots":"Schalotten",
+  "ginger":"Ingwer","carrot":"Möhren","carrots":"Möhren","potato":"Kartoffeln","potatoes":"Kartoffeln","sweet potato":"Süßkartoffel","sweet potatoes":"Süßkartoffel",
+  "tomato":"Tomaten","tomatoes":"Tomaten","cherry tomatoes":"Cherrytomaten","canned tomatoes":"gehackte Tomaten","diced tomatoes":"gehackte Tomaten","chopped tomatoes":"gehackte Tomaten","crushed tomatoes":"gehackte Tomaten","passata":"passierte Tomaten","tomato sauce":"passierte Tomaten",
+  "bell pepper":"Paprika (frisch)","bell peppers":"Paprika (frisch)","red pepper":"Paprika (frisch)","zucchini":"Zucchini","courgette":"Zucchini","eggplant":"Aubergine","aubergine":"Aubergine",
+  "broccoli":"Brokkoli","cauliflower":"Blumenkohl","spinach":"Spinat","baby spinach":"Babyspinat","kale":"Grünkohl","mushrooms":"Champignons","mushroom":"Champignons","cucumber":"Gurke",
+  "avocado":"Avocados","avocados":"Avocados","lemon":"Zitronen","lemons":"Zitronen","lemon juice":"Zitronen","lime":"Limetten","limes":"Limetten","lime juice":"Limetten",
+  "coconut milk":"Kokosmilch","tofu":"Tofu natur","firm tofu":"Tofu natur","extra firm tofu":"Tofu natur","silken tofu":"Seidentofu","smoked tofu":"Räuchertofu","tempeh":"Tempeh","seitan":"Seitan",
+  "red lentils":"rote Linsen","lentils":"Linsen","green lentils":"Linsen","brown lentils":"Linsen","pasta":"Nudeln","spaghetti":"Spaghetti","noodles":"Nudeln","rice noodles":"Reisnudeln","udon":"Udon-Nudeln",
+  "quinoa":"Quinoa","oats":"Haferflocken","rolled oats":"Haferflocken","plant milk":"Pflanzenmilch","soy milk":"Sojamilch","oat milk":"Hafermilch","almond milk":"Mandelmilch",
+  "yogurt":"Sojajoghurt","vegan yogurt":"Sojajoghurt","soy yogurt":"Sojajoghurt","plant-based yogurt":"Sojajoghurt","peanut butter":"Erdnussmus","tahini":"Tahin","maple syrup":"Ahornsirup","agave":"Agavendicksaft","agave syrup":"Agavendicksaft",
+  "cilantro":"Koriander","coriander":"Koriander","fresh coriander":"Koriander","parsley":"Petersilie","basil":"Basilikum","fresh basil":"Basilikum","mint":"Minze","dill":"Dill","chives":"Schnittlauch",
+  "spring onion":"Frühlingszwiebeln","spring onions":"Frühlingszwiebeln","scallion":"Frühlingszwiebeln","scallions":"Frühlingszwiebeln","green onion":"Frühlingszwiebeln","green onions":"Frühlingszwiebeln",
+  "cashews":"Cashews","peanuts":"Erdnüsse","walnuts":"Walnüsse","almonds":"Mandeln","sesame seeds":"Sesam","sesame":"Sesam","nutritional yeast":"Hefeflocken","corn":"Mais","sweetcorn":"Mais",
+  "peas":"Erbsen","frozen peas":"TK-Erbsen","edamame":"Edamame","chickpeas":"Kichererbsen","garbanzo beans":"Kichererbsen","black beans":"schwarze Bohnen","kidney beans":"Kidneybohnen","pinto beans":"Pinto-Bohnen",
+  "white beans":"weiße Bohnen","cannellini beans":"weiße Bohnen","butter beans":"weiße Bohnen","rice":"Reis","brown rice":"Reis","basmati rice":"Reis","jasmine rice":"Reis",
+  "tortillas":"Wraps","tortilla":"Wraps","wraps":"Wraps","bread":"Brot","pita":"Fladenbrot","flatbread":"Fladenbrot","sriracha":"Sriracha","gochujang":"Gochujang","miso":"Miso","miso paste":"Miso",
+  "curry paste":"Currypaste","red curry paste":"rote Currypaste","tomato paste":"Tomatenmark","banana":"Bananen","bananas":"Bananen","apple":"Äpfel","apples":"Äpfel","berries":"Beeren","blueberries":"Heidelbeeren",
+  "dates":"Datteln","chia seeds":"Chiasamen","flaxseed":"Leinsamen","flax seeds":"Leinsamen","cabbage":"Kohl","red cabbage":"Rotkohl","beetroot":"Rote Bete","beets":"Rote Bete","leek":"Lauch","celery":"Staudensellerie",
+  "chili":"Chili (frisch)","chilli":"Chili (frisch)","red chili":"Chili (frisch)","jalapeño":"Jalapeño","jalapeno":"Jalapeño","lettuce":"Salat","romaine":"Römersalat","arugula":"Rucola","rocket":"Rucola",
+  "pumpkin":"Kürbis","butternut squash":"Butternut-Kürbis","squash":"Kürbis","puff pastry":"Blätterteig","vegan cheese":"veganer Käse","vegan feta":"veganer Feta","hummus":"Hummus","olives":"Oliven",
+  "baked beans":"Baked Beans","sauerkraut":"Sauerkraut","applesauce":"Apfelmus","vegan mince":"veganes Hack","plant-based mince":"veganes Hack","vegan sausages":"vegane Würstchen","rice paper":"Reispapier",
+  "vegetable":"Gemüse","vegetables":"Gemüse","mixed vegetables":"Gemüse","bok choy":"Pak Choi","pak choi":"Pak Choi","bean sprouts":"Sojasprossen","sun-dried tomatoes":"getrocknete Tomaten","capers":"Kapern"
+};
+const BASICS = ["salt","salz","pepper","black pepper","pfeffer","oil","öl","olive oil","olivenöl","vegetable oil","neutral oil","rapsöl","sesame oil","sesamöl","coconut oil","kokosöl","water","wasser","sugar","zucker","brown sugar",
+  "garlic","garlic cloves","knoblauch","knoblauchzehe","knoblauchzehen","soy sauce","sojasauce","sojasoße","tamari","vinegar","essig","rice vinegar","apple cider vinegar","balsamic","broth","stock","vegetable broth","vegetable stock","gemüsebrühe","brühe",
+  "cumin","kreuzkümmel","smoked paprika","paprika powder","paprikapulver","turmeric","kurkuma","curry powder","currypulver","chili flakes","chiliflocken","oregano","thyme","thymian","cinnamon","zimt","nutmeg","muskat","garam masala",
+  "baking powder","backpulver","cornstarch","starch","speisestärke","flour","mehl","vegan butter","vegane butter","margarine","italian herbs","bay leaf","lorbeerblatt","ice","eis"];
+const VORRAT_MAP = [
+  [/kichererbsen|chickpea|garbanzo/, "kichererbsen", 265],
+  [/riesenbohnen|weiße bohnen|white beans|cannellini|butter beans/, "riesenbohnen", 250],
+  [/pinto|kidney|schwarze bohnen|black beans|chili bohnen/, "pinto", 240],
+  [/baked beans/, "bakedbeans", 410],
+  [/^reis$|naturreis|^rice$|brown rice|basmati|jasmine rice/, "naturreis", 0],
+  [/tomatenmark|tomato paste/, "tomatenmark-tube", 0],
+  [/apfelmus|applesauce/, "apfelmus", 0],
+  [/rotkohl|red cabbage/, "rotkohl", 680],
+  [/sauerkraut/, "sauerkraut", 810],
+  [/rote bete|beetroot|beets/, "rotebete", 430],
+  [/letscho/, "letscho", 0]
+];
+const UNITS = {
+  "g":"g","gr":"g","gramm":"g","gram":"g","grams":"g","kg":"kg","ml":"ml","l":"l","liter":"l","litre":"l","dl":"dl","cl":"cl",
+  "el":"EL","essl":"EL","esslöffel":"EL","tbsp":"EL","tbs":"EL","tablespoon":"EL","tablespoons":"EL",
+  "tl":"TL","teel":"TL","teelöffel":"TL","tsp":"TL","teaspoon":"TL","teaspoons":"TL",
+  "cup":"Tasse","cups":"Tasse","tasse":"Tasse","tassen":"Tasse","oz":"oz","ounce":"oz","ounces":"oz","lb":"lb","lbs":"lb","pound":"lb","pounds":"lb",
+  "dose":"Dose","dosen":"Dose","can":"Dose","cans":"Dose","tin":"Dose","tins":"Dose","glas":"Glas","gläser":"Glas","jar":"Glas","jars":"Glas",
+  "bund":"Bund","bunch":"Bund","bunches":"Bund","stk":"Stk.","stück":"Stk.","piece":"Stk.","pieces":"Stk.","clove":"Zehe","cloves":"Zehe","zehe":"Zehe","zehen":"Zehe",
+  "prise":"Prise","pinch":"Prise","handvoll":"Handvoll","handful":"Handvoll","handfuls":"Handvoll","pck":"Pck.","packung":"Pck.","package":"Pck.","pack":"Pck.","block":"Block",
+  "scheibe":"Scheiben","scheiben":"Scheiben","slice":"Scheiben","slices":"Scheiben","becher":"Becher","stange":"Stange","stangen":"Stange","stalk":"Stange","stalks":"Stange"
+};
+const FRAC = {"½":.5,"¼":.25,"¾":.75,"⅓":1/3,"⅔":2/3,"⅛":.125};
+const STOP = /^(zubereitung|anleitung|instructions|method|directions|steps|preparation|so geht'?s|how to)\b/i;
+const HEAD = /^(zutaten|ingredients|für |for the |you'?ll need|einkaufsliste)/i;
+function parseQty(str){
+  let s = str.replace(/[½¼¾⅓⅔⅛]/g, m=>" "+FRAC[m]+" ").replace(/(\d),(\d)/g,"$1.$2").trim();
+  const m = s.match(/^(\d+(?:\.\d+)?)(?:\s*[-–]\s*(\d+(?:\.\d+)?))?(?:\s+(\d+)\/(\d+)|\s*\/\s*(\d+)|\s+(0?\.\d+))?/);
+  if(!m) return null;
+  let q = parseFloat(m[2] || m[1]);
+  if(m[3] && m[4]) q += parseInt(m[3])/parseInt(m[4]);
+  else if(m[5]) q = parseFloat(m[1]) / parseInt(m[5]);
+  else if(m[6]) q += parseFloat(m[6]);
+  return {q, rest: s.slice(m[0].length).trim()};
+}
+function cleanName(n){
+  return n.replace(/\(.*?\)/g," ").replace(/,.*$/,"").replace(/\b(of|optional|nach belieben|to taste|frisch|fresh|chopped|diced|minced|sliced|grated|gehackt|gewürfelt|fein|klein|large|small|medium|groß|große|kleine|mittelgroße|cooked|gekocht|drained|abgetropft|rinsed|canned|dried|getrocknete?)\b/gi," ").replace(/\s+/g," ").trim();
+}
+function translate(n){
+  const l = n.toLowerCase();
+  if(EN_DE[l]) return EN_DE[l];
+  if(EN_DE[l.replace(/es$/,"")]) return EN_DE[l.replace(/es$/,"")];
+  if(EN_DE[l.replace(/s$/,"")]) return EN_DE[l.replace(/s$/,"")];
+  // längsten bekannten Teilbegriff suchen (z. B. "can chickpeas")
+  let best = null; Object.keys(EN_DE).forEach(k=>{ if(new RegExp("\\b"+k.replace(/[-]/g,"\\-")+"\\b").test(l) && (!best || k.length>best.length)) best = k; });
+  if(best) return EN_DE[best];
+  return n.charAt(0).toUpperCase() + n.slice(1);
+}
+function isBasic(n){
+  const parts = n.toLowerCase().split(/\s*(?:,|&|\+|\band\b|\bund\b|\bor\b|\boder\b)\s*/).filter(Boolean);
+  if(parts.length > 1) return parts.every(p=>isBasic(p));
+  const l = n.toLowerCase().trim();
+  return BASICS.some(b => l === b || l === b+"s" || l.replace(/^(frisch(er|e)?|fresh|ground|gemahlene?r?|dried|getrocknete?r?)\s+/,"") === b);
+}
+function parseIngredients(text){
+  const res = {v:[], f:[], skipped:[], rows:[]};
+  let lines = String(text||"").split(/\r?\n/);
+  const hi = lines.findIndex(l=>HEAD.test(l.replace(/^[^a-zäöüß]+/i,"").trim()));
+  if(hi >= 0) lines = lines.slice(hi+1);
+  for(let raw of lines){
+    let line = raw.replace(/^[\s\-–•*·▢□☐✓✔️➡️👉🔸🔹◦○●]+/u,"").replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/gu,"").trim();
+    if(!line) continue;
+    if(STOP.test(line)) break;
+    if(HEAD.test(line) || /:$/.test(line)) continue;
+    if(!/[a-zäöüß]/i.test(line)) continue;
+    if(line.split(/\s+/).length > 9 || line.length > 70) { continue; }
+    let q = null, unit = "", rest = line;
+    const pq = parseQty(line);
+    if(pq){ q = pq.q; rest = pq.rest; }
+    let um = rest.match(/^([a-zäöüß.]+)\b\.?\s*/i);
+    if(um && UNITS[um[1].toLowerCase().replace(/\.$/,"")]){ unit = UNITS[um[1].toLowerCase().replace(/\.$/,"")]; rest = rest.slice(um[0].length); }
+    else if(!pq){ // Menge hinten: "Tofu 200 g" / "Tofu (200g)"
+      const tail = rest.match(/\(?\s*(\d+(?:[.,]\d+)?)\s*(g|kg|ml|l|el|tl|tbsp|tsp|cups?|oz)\b\.?\s*\)?\s*$/i);
+      if(tail){ q = parseFloat(tail[1].replace(",",".")); unit = UNITS[tail[2].toLowerCase()]; rest = rest.slice(0, tail.index).trim(); }
+    }
+    rest = rest.replace(/^(of|von)\s+/i,"");
+    const name0 = cleanName(rest);
+    if(!name0) continue;
+    // Gewürze & Basics weglassen
+    if(isBasic(name0) || unit==="TL" || unit==="Prise"){ res.skipped.push(name0); res.rows.push({t:"skip", s:name0}); continue; }
+    let name = translate(name0);
+    // Einheiten umrechnen
+    if(unit==="kg"){ q = (q||1)*1000; unit="g"; }
+    if(unit==="l"){ q = (q||1)*1000; unit="ml"; }
+    if(unit==="dl"){ q = (q||1)*100; unit="ml"; }
+    if(unit==="cl"){ q = (q||1)*10; unit="ml"; }
+    if(unit==="oz"){ q = Math.round((q||1)*28); unit="g"; }
+    if(unit==="lb"){ q = Math.round((q||1)*454); unit="g"; }
+    // Vorrat?
+    const low = (name+" "+name0).toLowerCase();
+    const vm = VORRAT_MAP.find(([re])=>re.test(low));
+    if(vm){
+      const [ , id, size] = vm;
+      let n = 0;
+      if(size){ n = unit==="Dose"||unit==="Glas" ? Math.ceil(q||1) : unit==="g" && q ? Math.max(1, Math.round(q/size)) : 1; }
+      const ex = res.v.find(x=>x[0]===id); if(ex) ex[1] += n; else res.v.push([id, n]);
+      res.rows.push({t:"vorrat", s:`${name}${n?` (${n}×)`:""}`});
+      continue;
+    }
+    if(!q){ q = 1; if(!unit) unit = "Stk."; }
+    if(!unit) unit = "Stk.";
+    q = Math.round(q*100)/100;
+    res.f.push([name, q, unit]);
+    res.rows.push({t:"buy", s:`${name} – ${q} ${unit}`});
+  }
+  return res;
+}
+function guessProtein(ing){
+  const all = (ing.f.map(x=>x[0]).join(" ") + " " + ing.v.map(x=>x[0]).join(" ")).toLowerCase();
+  return /tofu|tempeh|seitan|soja|linsen|bohnen|kichererbsen|edamame|riesenbohnen|pinto|hack|lentil|bean|chickpea/.test(all) ? "hi" : null;
+}
+let ocrLib = null;
+async function ocrImage(file, onProgress){
+  if(!ocrLib){
+    await new Promise((ok, bad)=>{ const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"; s.onload = ok; s.onerror = bad; document.head.appendChild(s); });
+    ocrLib = window.Tesseract;
+  }
+  const worker = await ocrLib.createWorker("deu+eng", 1, { logger: m => { if(m.status==="recognizing text" && onProgress) onProgress(Math.round(m.progress*100)); } });
+  try{ const { data } = await worker.recognize(file); return data.text || ""; }
+  finally{ await worker.terminate(); }
+}
+
 // ---------- Hilfen ----------
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -305,7 +471,9 @@ const today0 = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
 const startDay = () => today0() < START ? new Date(START) : today0();
 const PROT = {hi:"proteinreich", mid:"mittel Eiweiß", lo:"wenig Eiweiß"};
 const KIND = {hf:"HelloFresh", topf:"Topf", schnell:"schnell gemacht", frei:"eigener Wunsch"};
-const recipeFor = dish => (QUICK.find(q=>q.dish===dish)||{}).url || "";
+const customFor = name => state.custom.find(c=>c.name===name);
+const recipeFor = dish => (QUICK.find(q=>q.dish===dish)||{}).url || (customFor(dish)||{}).url || "";
+const ingFor = dish => ING[dish] || ((customFor(dish)||{}).ing && ((customFor(dish).ing.v||[]).length || (customFor(dish).ing.f||[]).length) ? customFor(dish).ing : null);
 const isPhase1 = k => k >= PHASE1[0] && k <= PHASE1[1];
 const fmtDate = d => `${WDL[d.getDay()]}, ${d.getDate()}. ${MON[d.getMonth()]}`;
 
@@ -320,14 +488,14 @@ function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("on
 // ---------- Mahlzeiten je Tag ----------
 function breakfastFor(k){
   const e = state.days[k];
-  if(e && e.breakfast) return BREAKFAST.find(b=>b.name===e.breakfast) || {name:e.breakfast, v:[], f:[], free:true};
+  if(e && e.breakfast) return BREAKFAST.find(b=>b.name===e.breakfast) || {name:e.breakfast, v:(ingFor(e.breakfast)||{}).v||[], f:(ingFor(e.breakfast)||{}).f||[], free:true};
   if(isPhase1(k)) return BREAKFAST[PORRIDGE];
   const n = Math.round(fromKey(k).getTime()/86400000);
   return BREAKFAST[ROTATION[((n % ROTATION.length)+ROTATION.length) % ROTATION.length]];
 }
 function lunchFor(k){
   const e = state.days[k];
-  if(e && e.lunch) return LUNCH.find(l=>l.name===e.lunch) || {name:e.lunch, v:[], f:[], free:true};
+  if(e && e.lunch) return LUNCH.find(l=>l.name===e.lunch) || {name:e.lunch, v:(ingFor(e.lunch)||{}).v||[], f:(ingFor(e.lunch)||{}).f||[], free:true};
   const y = state.days[key(addDays(fromKey(k),-1))];
   if(y && y.kind === "topf") return {name:`Reste: ${y.dish}`, v:[], f:[], leftover:true};
   const n = Math.round(fromKey(k).getTime()/86400000);
@@ -354,10 +522,11 @@ function renderDay(){
   if(e && e.dish){
     dinner += `<div class="badges"><span class="badge">${esc(KIND[e.kind]||"")}</span>${e.protein&&PROT[e.protein]?`<span class="badge">${PROT[e.protein]}</span>`:""}${e.edited?`<span class="badge edit">geändert</span>`:""}</div>`;
     if(e.tip) dinner += `<div class="tip">💡 ${esc(e.tip)}</div>`;
-    if(ING[e.dish] && ING[e.dish].note) dinner += `<div class="muted" style="font-size:13px;margin:-4px 0 10px">${esc(ING[e.dish].note)}</div>`;
+    const IG = ingFor(e.dish);
+    if(IG && IG.note) dinner += `<div class="muted" style="font-size:13px;margin:-4px 0 10px">${esc(IG.note)}</div>`;
     if(recipeFor(e.dish)) dinner += `<a class="recipe" href="${esc(recipeFor(e.dish))}" target="_blank" rel="noopener">📖 Rezept ansehen ↗</a>`;
-    if(ING[e.dish]) dinner += `<div class="need" style="margin-bottom:10px">${esc(needText(ING[e.dish]))}</div>`;
-    if(w && ING[e.dish]) dinner += `<div class="actions">
+    if(IG) dinner += `<div class="need" style="margin-bottom:10px">${esc(needText(IG))}</div>`;
+    if(w && IG) dinner += `<div class="actions">
         <button class="btn small ghost" data-shopdish="${esc(e.dish)}">🛒 Zutaten auf die Liste</button>
         <button class="btn small ghost" data-deduct="${k}">${e.stockDeducted?"✓ Vorrat abgezogen":"Gekocht – Vorrat abziehen"}</button></div>`;
   } else if(w){ dinner += `<button class="btn small" data-meal="dinner">Auswählen</button>`; }
@@ -403,7 +572,7 @@ function openSheet(meal){
   if(meal==="breakfast") $("#otherChips").innerHTML = chipHtml(BREAKFAST,"b","name");
   if(meal==="lunch") $("#otherChips").innerHTML = chipHtml(LUNCH,"l","name");
   renderCustom();
-  $("#twoDays").checked = false; $("#freeInput").value = ""; $("#saveCustom").checked = true;
+  $("#twoDays").checked = false; $("#freeInput").value = ""; $("#saveCustom").checked = true; $("#recipeUrl").value = ""; $("#ingText").value = ""; $("#ingPreview").innerHTML = ""; $("#ocrStatus").textContent = ""; $("#recipeBox").open = false;
   $("#sheetBg").classList.add("open");
 }
 function renderCustom(){
@@ -457,7 +626,7 @@ function collect(meals){
       const lack = Math.max(0, n-have); avail[id] = Math.max(0, have-n);
       if(lack>0) missing[name] = (missing[name]||0) + lack;
     });
-    (r.f||[]).forEach(([name,n,unit])=>{ fresh[name] = fresh[name] || {}; fresh[name][unit] = (fresh[name][unit]||0) + n; });
+    (r.f||[]).forEach(([name,n,unit])=>{ const kk = Object.keys(fresh).find(x=>x.toLowerCase()===String(name).toLowerCase()) || name; fresh[kk] = fresh[kk] || {}; fresh[kk][unit] = (fresh[kk][unit]||0) + n; });
   });
   const pl = (n,u)=> n>1 && u==="Dose" ? "Dosen" : n>1 && u==="Glas" ? "Gläser" : u;
   const round = n => Math.round(n*10)/10;
@@ -492,16 +661,16 @@ function weekMeals(n){
     const k = key(addDays(t,i)), e = state.days[k];
     meals.push(breakfastFor(k));
     const l = lunchFor(k); if(!l.leftover) meals.push(l);
-    if(e && e.dish && e.dish !== prev && ING[e.dish]) meals.push(ING[e.dish]);
+    if(e && e.dish && e.dish !== prev && ingFor(e.dish)) meals.push(ingFor(e.dish));
     prev = e?.dish;
   }
   meals.push({v:[], f:SNACKS_WEEK});
   return meals;
 }
 async function deductStock(dk){
-  const e = state.days[dk]; if(!e || !ING[e.dish] || !db) return;
+  const e = state.days[dk]; if(!e || !ingFor(e.dish) || !db) return;
   if(e.stockDeducted){ toast("Schon abgezogen."); return; }
-  for(const [id,n] of ING[e.dish].v){
+  for(const [id,n] of ingFor(e.dish).v){
     if(!n) continue;
     const s = state.stock.find(x=>x.id===id); if(!s) continue;
     try{ await db.doc("vorrat/"+id).update({count:Math.max(0,(Number(s.count)||0)-n)}); }catch(err){ handleWriteError(err); return; }
@@ -573,7 +742,7 @@ document.addEventListener("click", e=>{
     if(g==="q"||g==="h"){ const q = (g==="q"?QUICK:HF)[+i]; applyPick({dish:q.dish, kind:q.kind, protein:q.protein, tip:q.tip||""}); }
     if(g==="b") applyPick(BREAKFAST[+i].name);
     if(g==="l") applyPick(LUNCH[+i].name);
-    if(g==="c"){ const c = state.custom.find(x=>x.id===i); if(c) applyPick(sheet.meal==="dinner" ? {dish:c.name, kind:"frei", protein:null, tip:""} : c.name); }
+    if(g==="c"){ const c = state.custom.find(x=>x.id===i); if(c) applyPick(sheet.meal==="dinner" ? {dish:c.name, kind:"frei", protein:c.protein||null, tip:""} : c.name); }
     return;
   }
   if(t.id==="resetMeal"){ if(sheet) applyPick(null); return; }
@@ -588,7 +757,7 @@ document.addEventListener("click", e=>{
     return;
   }
   if(t.dataset.shopchip){ if(state.canWrite) addShop(t.dataset.shopchip); return; }
-  if(t.dataset.shopdish){ addItems(collect([ING[t.dataset.shopdish]])); return; }
+  if(t.dataset.shopdish){ addItems(collect([ingFor(t.dataset.shopdish)])); return; }
   if(t.dataset.deduct){ deductStock(t.dataset.deduct); return; }
   if(t.id==="planShop"){ addItems(collect(weekMeals(7))); return; }
   if(t.dataset.inc){ changeStock(t.dataset.inc, 1); return; }
@@ -597,10 +766,16 @@ document.addEventListener("click", e=>{
 $("#sheetBg").addEventListener("click", e=>{ if(e.target.id==="sheetBg") closeSheet(); });
 $("#freeForm").addEventListener("submit", e=>{
   e.preventDefault(); const v = $("#freeInput").value.trim(); if(!v || !sheet) return;
-  if($("#saveCustom").checked && db && state.canWrite && !state.custom.some(c=>c.meal===sheet.meal && c.name.toLowerCase()===v.toLowerCase())){
-    db.collection("custom").add({meal:sheet.meal, name:v, at:new Date().toISOString()}).catch(handleWriteError);
+  const url = $("#recipeUrl").value.trim(), raw = $("#ingText").value.trim();
+  const ing = raw ? parseIngredients(raw) : null;
+  const protein = ing ? guessProtein(ing) : null;
+  if(db && state.canWrite && ($("#saveCustom").checked || url || raw)){
+    const ex = state.custom.find(c=>c.meal===sheet.meal && c.name.toLowerCase()===v.toLowerCase());
+    const doc = {meal:sheet.meal, name:v, at:(ex&&ex.at)||new Date().toISOString(), url:url||(ex&&ex.url)||"", raw:raw||(ex&&ex.raw)||"",
+      ing: ing ? {v:ing.v, f:ing.f, note: url ? "Eigenes Rezept (Link)." : "Eigenes Rezept."} : ((ex&&ex.ing)||null), protein: protein || (ex&&ex.protein) || null};
+    (ex ? db.doc("custom/"+ex.id).set(doc) : db.collection("custom").add(doc)).catch(handleWriteError);
   }
-  applyPick(sheet.meal==="dinner" ? {dish:v, kind:"frei", protein:null, tip:""} : v);
+  applyPick(sheet.meal==="dinner" ? {dish:v, kind:"frei", protein:protein, tip:""} : v);
 });
 $("#shopForm").addEventListener("submit", e=>{ e.preventDefault(); const v=$("#shopInput").value; $("#shopInput").value=""; addShop(v); });
 $("#stockForm").addEventListener("submit", async e=>{
@@ -609,6 +784,32 @@ $("#stockForm").addEventListener("submit", async e=>{
 });
 $("#quickChips").innerHTML = chipHtml(QUICK,"q","dish");
 $("#hfChips").innerHTML = chipHtml(HF,"h","dish");
+
+
+// ---------- Rezept-Import: Bedienung ----------
+function renderIngPreview(){
+  const raw = $("#ingText").value; if(!raw.trim()){ $("#ingPreview").innerHTML = ""; return; }
+  const r = parseIngredients(raw);
+  const buy = r.rows.filter(x=>x.t==="buy").map(x=>esc(x.s)), vor = r.rows.filter(x=>x.t==="vorrat").map(x=>esc(x.s)), sk = r.rows.filter(x=>x.t==="skip").map(x=>esc(x.s));
+  $("#ingPreview").innerHTML =
+    (buy.length ? `<div><b>Einkaufen:</b> ${buy.join(" · ")}</div>` : "") +
+    (vor.length ? `<div><b>Aus dem Vorrat:</b> ${vor.join(" · ")}</div>` : "") +
+    (sk.length ? `<div><b>Weggelassen:</b> ${sk.join(", ")}</div>` : "") +
+    (!buy.length && !vor.length ? `<div>Keine Zutaten erkannt – bitte eine Zutat pro Zeile.</div>` : "");
+}
+$("#ingText").addEventListener("input", renderIngPreview);
+$("#ocrBtn").addEventListener("click", ()=>$("#ocrFile").click());
+$("#ocrFile").addEventListener("change", async e=>{
+  const file = e.target.files && e.target.files[0]; e.target.value = ""; if(!file) return;
+  $("#ocrStatus").textContent = "Lese Bild … (beim ersten Mal etwas länger)";
+  try{
+    const text = await ocrImage(file, p=>{ $("#ocrStatus").textContent = `Lese Bild … ${p} %`; });
+    const cur = $("#ingText").value.trim();
+    $("#ingText").value = (cur ? cur + "\n" : "") + text.trim();
+    $("#ocrStatus").textContent = "Fertig – bitte kurz prüfen.";
+    renderIngPreview();
+  }catch(err){ $("#ocrStatus").textContent = "Bild konnte nicht gelesen werden."; }
+});
 
 // ---------- Datenbank (Supabase) ----------
 function makeDb(sb){
