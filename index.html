@@ -127,7 +127,7 @@
 
   <section id="tab-shop" class="hidden">
     <h1>Einkaufsliste</h1>
-    <button class="btn" id="planShop" style="width:100%">🛒 Alles für die nächsten 7 Tage</button>
+    <div class="row"><button class="btn" id="planShop2" style="flex:1">🛒 Nächste 2 Tage</button><button class="btn" id="planShop" style="flex:1">🛒 Nächste 7 Tage</button></div>
     <div class="muted" style="margin-top:6px;font-size:13px">Frühstück, Mittag, Abendessen und Snacks für 2 Personen, abgeglichen mit dem Vorrat. Gewürze, Knoblauch, Brühe, Öl und Sojasauce setze ich als vorhanden voraus. HelloFresh-Zutaten kommen mit der Box.</div>
     <form class="row" id="shopForm" style="margin-top:14px">
       <input type="text" id="shopInput" placeholder="Was wird noch gebraucht?" autocomplete="off">
@@ -196,10 +196,11 @@
       <input type="text" id="recipeUrl" placeholder="https://… (auch Instagram)" autocomplete="off" inputmode="url" style="width:100%">
       <div class="sec">Zutaten</div>
       <div class="row" style="margin-bottom:8px">
-        <button type="button" class="btn small ghost" id="ocrBtn">📷 Bild hochladen</button>
-        <span class="muted" id="ocrStatus" style="align-self:center;font-size:13px"></span>
+        <button type="button" class="btn small ghost" id="ocrBtn">📷 Bilder hochladen</button>
+        <button type="button" class="btn small ghost" id="linkBtn">🔗 Aus Link holen</button>
       </div>
-      <input type="file" id="ocrFile" accept="image/*" class="hidden">
+      <div class="muted" id="ocrStatus" style="font-size:13px;margin:-2px 0 8px"></div>
+      <input type="file" id="ocrFile" accept="image/*" multiple class="hidden">
       <textarea id="ingText" rows="7" placeholder="Zutaten einfügen – eine pro Zeile, z. B.&#10;400 g Tofu&#10;2 Zwiebeln&#10;1 can chickpeas" style="width:100%;font:inherit;font-size:15px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)"></textarea>
       <div id="ingPreview" class="muted" style="font-size:13px;margin-top:8px"></div>
       <div class="muted" style="font-size:12.5px;margin-top:6px">Gewürze, Öl, Knoblauch, Salz &amp; Co. werden weggelassen. Englisch geht auch. Danach oben bei „Eigener Wunsch“ den Namen eintragen und OK tippen.</div>
@@ -356,11 +357,16 @@ const UNITS = {
   "dose":"Dose","dosen":"Dose","can":"Dose","cans":"Dose","tin":"Dose","tins":"Dose","glas":"Glas","gläser":"Glas","jar":"Glas","jars":"Glas",
   "bund":"Bund","bunch":"Bund","bunches":"Bund","stk":"Stk.","stück":"Stk.","piece":"Stk.","pieces":"Stk.","clove":"Zehe","cloves":"Zehe","zehe":"Zehe","zehen":"Zehe",
   "prise":"Prise","pinch":"Prise","handvoll":"Handvoll","handful":"Handvoll","handfuls":"Handvoll","pck":"Pck.","packung":"Pck.","package":"Pck.","pack":"Pck.","block":"Block",
-  "scheibe":"Scheiben","scheiben":"Scheiben","slice":"Scheiben","slices":"Scheiben","becher":"Becher","stange":"Stange","stangen":"Stange","stalk":"Stange","stalks":"Stange"
+  "scheibe":"Scheiben","scheiben":"Scheiben","slice":"Scheiben","slices":"Scheiben","becher":"Becher","stange":"Stange","stangen":"Stange","stalk":"Stange","stalks":"Stange","bulb":"Knolle","bulbs":"Knolle","knolle":"Knolle","port":"Port.","portion":"Port.","portionen":"Port.","servings":"Port."
 };
 const FRAC = {"½":.5,"¼":.25,"¾":.75,"⅓":1/3,"⅔":2/3,"⅛":.125};
 const STOP = /^(zubereitung|anleitung|instructions|method|directions|steps|preparation|so geht'?s|how to)\b/i;
 const HEAD = /^(zutaten|ingredients|für |for the |you'?ll need|einkaufsliste)/i;
+
+const JUNK = /(folgen|follow|original-audio|audio|markieren|kommentier|comment|gefällt|likes?\b|teilen|share|gespeichert|saved|per serving|pro portion|portion:|protein\s*[:\d]|kcal|calories|kalorien|fib(re|er)|ballaststoff|\biron\b|eisen|carbs|kohlenhydrat|\bfat\b|fett:|macros|nährwert|http|www\.|@|#|januar|februar|märz|april|\bmai\b|juni|juli|august|september|oktober|november|dezember|january|february|march|june|july|october|december|vor \d+ (tag|std|min|woch)|\bago\b|link in bio|rezept unten|recipe below|swipe)/i;
+const WORDQ = {"ein":1,"eine":1,"einen":1,"einer":1,"one":1,"a":1,"an":1,"half":0.5,"halbe":0.5,"halber":0.5,"halbes":0.5,"zwei":2,"two":2,"drei":3,"three":3};
+function lev(a,b){ if(Math.abs(a.length-b.length)>1) return 2; const d=[...Array(b.length+1).keys()]; for(let i=1;i<=a.length;i++){ let p=d[0]; d[0]=i; for(let j=1;j<=b.length;j++){ const t=d[j]; d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1)); p=t; } } return d[b.length]; }
+function fuzzy(word, list){ if(word.length<5) return null; for(const k of list){ if(k.length>=5 && lev(word,k)<=1) return k; } return null; }
 function parseQty(str){
   let s = str.replace(/[½¼¾⅓⅔⅛]/g, m=>" "+FRAC[m]+" ").replace(/(\d),(\d)/g,"$1.$2").trim();
   const m = s.match(/^(\d+(?:\.\d+)?)(?:\s*[-–]\s*(\d+(?:\.\d+)?))?(?:\s+(\d+)\/(\d+)|\s*\/\s*(\d+)|\s+(0?\.\d+))?/);
@@ -372,7 +378,7 @@ function parseQty(str){
   return {q, rest: s.slice(m[0].length).trim()};
 }
 function cleanName(n){
-  return n.replace(/\(.*?\)/g," ").replace(/,.*$/,"").replace(/\b(of|optional|nach belieben|to taste|frisch|fresh|chopped|diced|minced|sliced|grated|gehackt|gewürfelt|fein|klein|large|small|medium|groß|große|kleine|mittelgroße|cooked|gekocht|drained|abgetropft|rinsed|canned|dried|getrocknete?)\b/gi," ").replace(/\s+/g," ").trim();
+  return n.replace(/\(.*?\)/g," ").replace(/\b(in|into|cut into)\s+(streifen|würfeln|würfel|scheiben|ringen|ringe|stücken|stücke|cubes|slices|strips|pieces|rings)\b.*$/i," ").replace(/,.*$/,"").replace(/\b(of|optional|nach belieben|to taste|frisch|fresh|chopped|diced|minced|sliced|grated|gehackt|gewürfelt|fein|klein|large|small|medium|groß|große|kleine|mittelgroße|cooked|gekocht|drained|abgetropft|rinsed|canned|dried|getrocknete?)\b/gi," ").replace(/\s+/g," ").trim();
 }
 function translate(n){
   const l = n.toLowerCase();
@@ -382,28 +388,35 @@ function translate(n){
   // längsten bekannten Teilbegriff suchen (z. B. "can chickpeas")
   let best = null; Object.keys(EN_DE).forEach(k=>{ if(new RegExp("\\b"+k.replace(/[-]/g,"\\-")+"\\b").test(l) && (!best || k.length>best.length)) best = k; });
   if(best) return EN_DE[best];
+  const fz = fuzzy(l, Object.keys(EN_DE)); if(fz) return EN_DE[fz];
   return n.charAt(0).toUpperCase() + n.slice(1);
 }
 function isBasic(n){
   const parts = n.toLowerCase().split(/\s*(?:,|&|\+|\band\b|\bund\b|\bor\b|\boder\b)\s*/).filter(Boolean);
   if(parts.length > 1) return parts.every(p=>isBasic(p));
   const l = n.toLowerCase().trim();
-  return BASICS.some(b => l === b || l === b+"s" || l.replace(/^(frisch(er|e)?|fresh|ground|gemahlene?r?|dried|getrocknete?r?)\s+/,"") === b);
+  const l2 = l.replace(/^(frisch(er|e)?|fresh|ground|gemahlene?r?|dried|getrocknete?r?|geräuchertes?|smoked)\s+/,"");
+  if(BASICS.some(b => l === b || l === b+"s" || l2 === b)) return true;
+  if(/(pulver|powder|gewürz|seasoning|spice)$/.test(l2.split(" ")[0]) || /(pulver|powder|gewürz|seasoning|spice)$/.test(l2)) return true;
+  return !!fuzzy(l2, BASICS);
 }
 function parseIngredients(text){
-  const res = {v:[], f:[], skipped:[], rows:[]};
+  const res = {v:[], f:[], skipped:[], rows:[], ignored:0};
   let lines = String(text||"").split(/\r?\n/);
-  const hi = lines.findIndex(l=>HEAD.test(l.replace(/^[^a-zäöüß]+/i,"").trim()));
-  if(hi >= 0) lines = lines.slice(hi+1);
+  let skipping = false;
   for(let raw of lines){
     let line = raw.replace(/^[\s\-–•*·▢□☐✓✔️➡️👉🔸🔹◦○●]+/u,"").replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/gu,"").trim();
     if(!line) continue;
-    if(STOP.test(line)) break;
+    if(STOP.test(line)){ skipping = true; continue; }
+    if(/^(zutaten|ingredients)\b/i.test(line)){ skipping = false; continue; }
+    if(skipping) continue;
     if(HEAD.test(line) || /:$/.test(line)) continue;
     if(!/[a-zäöüß]/i.test(line)) continue;
-    if(line.split(/\s+/).length > 9 || line.length > 70) { continue; }
+    if(JUNK.test(line)){ res.ignored++; continue; }
+    if(line.split(/\s+/).length > 9 || line.length > 70) { res.ignored++; continue; }
     let q = null, unit = "", rest = line;
-    const pq = parseQty(line);
+    let pq = parseQty(line);
+    if(!pq){ const wm = line.match(/^([a-zäöü]+)\s+/i); if(wm && WORDQ[wm[1].toLowerCase()] !== undefined) pq = {q:WORDQ[wm[1].toLowerCase()], rest: line.slice(wm[0].length)}; }
     if(pq){ q = pq.q; rest = pq.rest; }
     let um = rest.match(/^([a-zäöüß.]+)\b\.?\s*/i);
     if(um && UNITS[um[1].toLowerCase().replace(/\.$/,"")]){ unit = UNITS[um[1].toLowerCase().replace(/\.$/,"")]; rest = rest.slice(um[0].length); }
@@ -414,6 +427,11 @@ function parseIngredients(text){
     rest = rest.replace(/^(of|von)\s+/i,"");
     const name0 = cleanName(rest);
     if(!name0) continue;
+    const letters = (name0.match(/[a-zäöüß]/gi)||[]).length, nonsp = name0.replace(/\s/g,"").length;
+    const sane = /[a-zäöüß]{3,}/i.test(name0) && letters/nonsp >= 0.85 && name0.split(" ").length <= 6;
+    if(!sane){ res.ignored++; continue; }
+    if(q === null){ if(isBasic(name0)){ res.skipped.push(name0); res.rows.push({t:"skip", s:name0}); } else res.ignored++; continue; }
+    if(unit==="Port."){ res.ignored++; continue; }
     // Gewürze & Basics weglassen
     if(isBasic(name0) || unit==="TL" || unit==="Prise"){ res.skipped.push(name0); res.rows.push({t:"skip", s:name0}); continue; }
     let name = translate(name0);
@@ -664,7 +682,7 @@ function weekMeals(n){
     if(e && e.dish && e.dish !== prev && ingFor(e.dish)) meals.push(ingFor(e.dish));
     prev = e?.dish;
   }
-  meals.push({v:[], f:SNACKS_WEEK});
+  meals.push({v:[], f: n>=7 ? SNACKS_WEEK : SNACKS_WEEK.map(([nm,q,u])=> u==="g" ? [nm,q,u] : [nm, Math.ceil(q*n/7), u])});
   return meals;
 }
 async function deductStock(dk){
@@ -692,6 +710,7 @@ function renderShop(){
   $("#shopChips").innerHTML = SHOP_CHIPS.map(c=>`<button class="chip" data-shopchip="${esc(c)}">${esc(c)}</button>`).join("");
   $("#shopForm").classList.toggle("hidden", !state.canWrite);
   $("#planShop").classList.toggle("hidden", !state.canWrite);
+  $("#planShop2").classList.toggle("hidden", !state.canWrite);
 }
 async function addShop(text){
   text = text.trim(); if(!text || !db) return;
@@ -760,6 +779,7 @@ document.addEventListener("click", e=>{
   if(t.dataset.shopdish){ addItems(collect([ingFor(t.dataset.shopdish)])); return; }
   if(t.dataset.deduct){ deductStock(t.dataset.deduct); return; }
   if(t.id==="planShop"){ addItems(collect(weekMeals(7))); return; }
+  if(t.id==="planShop2"){ addItems(collect(weekMeals(2))); return; }
   if(t.dataset.inc){ changeStock(t.dataset.inc, 1); return; }
   if(t.dataset.dec){ changeStock(t.dataset.dec, -1); return; }
 });
@@ -795,21 +815,57 @@ function renderIngPreview(){
     (buy.length ? `<div><b>Einkaufen:</b> ${buy.join(" · ")}</div>` : "") +
     (vor.length ? `<div><b>Aus dem Vorrat:</b> ${vor.join(" · ")}</div>` : "") +
     (sk.length ? `<div><b>Weggelassen:</b> ${sk.join(", ")}</div>` : "") +
-    (!buy.length && !vor.length ? `<div>Keine Zutaten erkannt – bitte eine Zutat pro Zeile.</div>` : "");
+    (r.ignored ? `<div>${r.ignored} Zeilen ohne Zutat ignoriert (z. B. Werbung, Nährwerte, Überschriften).</div>` : "") +
+    (!buy.length && !vor.length ? `<div>Keine Zutaten erkannt – bitte eine Zutat pro Zeile mit Menge.</div>` : "");
 }
 $("#ingText").addEventListener("input", renderIngPreview);
 $("#ocrBtn").addEventListener("click", ()=>$("#ocrFile").click());
 $("#ocrFile").addEventListener("change", async e=>{
-  const file = e.target.files && e.target.files[0]; e.target.value = ""; if(!file) return;
-  $("#ocrStatus").textContent = "Lese Bild … (beim ersten Mal etwas länger)";
+  const files = Array.from(e.target.files || []); e.target.value = ""; if(!files.length) return;
   try{
-    const text = await ocrImage(file, p=>{ $("#ocrStatus").textContent = `Lese Bild … ${p} %`; });
+    let all = "";
+    for(let i=0;i<files.length;i++){
+      $("#ocrStatus").textContent = `Lese Bild ${i+1} von ${files.length} …` + (i===0 ? " (beim ersten Mal etwas länger)" : "");
+      const text = await ocrImage(files[i], p=>{ $("#ocrStatus").textContent = `Lese Bild ${i+1} von ${files.length} … ${p} %`; });
+      all += "\n" + text.trim();
+    }
     const cur = $("#ingText").value.trim();
-    $("#ingText").value = (cur ? cur + "\n" : "") + text.trim();
+    $("#ingText").value = (cur ? cur + "\n" : "") + all.trim();
     $("#ocrStatus").textContent = "Fertig – bitte kurz prüfen.";
     renderIngPreview();
   }catch(err){ $("#ocrStatus").textContent = "Bild konnte nicht gelesen werden."; }
 });
+$("#linkBtn").addEventListener("click", async ()=>{
+  const url = $("#recipeUrl").value.trim();
+  if(!/^https?:\/\//i.test(url)){ $("#ocrStatus").textContent = "Bitte zuerst oben den Rezept-Link einfügen."; return; }
+  if(/instagram\.com|tiktok\.com|facebook\.com/i.test(url)){ $("#ocrStatus").textContent = "Instagram & Co. lassen sich nicht auslesen – bitte Screenshots nutzen."; return; }
+  if(!sb){ return; }
+  $("#ocrStatus").textContent = "Lese Rezeptseite …";
+  try{
+    const { data, error } = await sb.functions.invoke("rezept", { body: { url } });
+    if(error) throw error;
+    let lines = Array.isArray(data && data.ingredients) && data.ingredients.length ? data.ingredients.map(String) : extractIngredientSection(String((data && data.text) || ""));
+    if(!lines.length){ $("#ocrStatus").textContent = "Keine Zutaten gefunden – bitte Text oder Screenshot nutzen."; return; }
+    const cur = $("#ingText").value.trim();
+    $("#ingText").value = (cur ? cur + "\n" : "") + lines.join("\n");
+    if(data && data.title && !$("#freeInput").value.trim()) $("#freeInput").value = String(data.title).slice(0,60);
+    $("#ocrStatus").textContent = "Fertig – bitte kurz prüfen.";
+    renderIngPreview();
+  }catch(err){
+    $("#ocrStatus").textContent = "Link konnte nicht gelesen werden. Ist die Supabase-Funktion „rezept“ eingerichtet?";
+  }
+});
+function extractIngredientSection(text){
+  const lines = text.split(/\n+/).map(l=>l.replace(/\s+/g," ").trim()).filter(Boolean);
+  let start = lines.findIndex(l=>/^(zutaten|ingredients)\b/i.test(l));
+  if(start < 0) return [];
+  const out = [];
+  for(let i=start+1; i<lines.length && out.length<80; i++){
+    if(/^(zubereitung|anleitung|instructions|method|directions|so geht|schritt 1|step 1|kochmodus)\b/i.test(lines[i])) break;
+    out.push(lines[i]);
+  }
+  return out;
+}
 
 // ---------- Datenbank (Supabase) ----------
 function makeDb(sb){
